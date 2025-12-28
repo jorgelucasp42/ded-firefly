@@ -17,4 +17,8 @@ double firefly_optimize(const DedData *data,
                         const FireflyParams *params,
                         Solution *best);
 
+double firefly_optimize_omp(const DedData *data,
+                            const FireflyParams *params,
+                            Solution *best);
+
 #endif
