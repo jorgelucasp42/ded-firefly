@@ -44,108 +44,128 @@ static double run_firefly_core(const DedData *data,
     int n = params->n_fireflies;
     size_t n_vars = (size_t)data->n_units * (size_t)data->n_hours;
 
-    Solution **pop = (Solution **)calloc((size_t)n, sizeof(Solution *));
-    double *cost = (double *)calloc((size_t)n, sizeof(double));
-    if (!pop || !cost) {
-        free(pop);
-        free(cost);
+    // double-buffer
+    Solution **popA = (Solution **)calloc((size_t)n, sizeof(Solution *));
+    Solution **popB = (Solution **)calloc((size_t)n, sizeof(Solution *));
+    double *costA = (double *)calloc((size_t)n, sizeof(double));
+    double *costB = (double *)calloc((size_t)n, sizeof(double));
+    if (!popA || !popB || !costA || !costB) {
+        free(popA); free(popB); free(costA); free(costB);
         return 1e30;
     }
 
+    for (int i = 0; i < n; ++i) {
+        popA[i] = solution_create(data);
+        popB[i] = solution_create(data);
+        if (!popA[i] || !popB[i]) {
+            for (int k = 0; k <= i; ++k) {
+                solution_destroy(popA[k]);
+                solution_destroy(popB[k]);
+            }
+            free(popA); free(popB); free(costA); free(costB);
+            return 1e30;
+        }
+    }
+
+    // init
     Rng base;
     rng_seed(&base, params->seed);
 
     double best_cost = 1e30;
     for (int i = 0; i < n; ++i) {
-        pop[i] = solution_create(data);
-        if (!pop[i]) {
-            best_cost = 1e30;
-            n = i;
-            goto cleanup;
-        }
-        solution_init_random(pop[i], data, rng_u32(&base));
-        cost[i] = ded_cost(pop[i], data);
-        if (cost[i] < best_cost) {
-            best_cost = cost[i];
-            memcpy(best->P, pop[i]->P, n_vars * sizeof(double));
+        solution_init_random(popA[i], data, rng_u32(&base));
+        costA[i] = ded_cost(popA[i], data);
+
+        if (costA[i] < best_cost) {
+            best_cost = costA[i];
+            memcpy(best->P, popA[i]->P, n_vars * sizeof(double));
         }
     }
+
+    Solution **pop_old = popA;
+    Solution **pop_new = popB;
+    double *cost_old = costA;
+    double *cost_new = costB;
 
     for (int iter = 0; iter < params->max_iters; ++iter) {
-        // mover xi em direção a mais brilhantes xj
-        if (use_openmp) {
+
+        // MOVE: escreve em pop_new[i], lê somente pop_old[j]
 #ifdef _OPENMP
+        if (use_openmp) {
 #pragma omp parallel for schedule(static)
             for (int i = 0; i < n; ++i) {
+                // começa copiando o estado antigo
+                memcpy(pop_new[i]->P, pop_old[i]->P, n_vars * sizeof(double));
+
                 Rng rng;
-                rng_seed(&rng, params->seed + (unsigned)(iter * 1315423911u + (unsigned)i * 2654435761u));
+                rng_seed(&rng, params->seed +
+                              (unsigned)(iter * 1315423911u +
+                              (unsigned)i * 2654435761u));
 
                 for (int j = 0; j < n; ++j) {
-                    if (cost[j] < cost[i]) {
-                        move_firefly(data, params, pop[i], pop[j], &rng);
+                    if (cost_old[j] < cost_old[i]) {
+                        move_firefly(data, params, pop_new[i], pop_old[j], &rng);
                     }
                 }
             }
-#else
-            for (int i = 0; i < n; ++i) {
-                Rng rng;
-                rng_seed(&rng, params->seed + (unsigned)(iter * 1315423911u + (unsigned)i * 2654435761u));
-
-                for (int j = 0; j < n; ++j) {
-                    if (cost[j] < cost[i]) {
-                        move_firefly(data, params, pop[i], pop[j], &rng);
-                    }
-                }
-            }
+        } else
 #endif
-        } else {
+        {
             for (int i = 0; i < n; ++i) {
+                memcpy(pop_new[i]->P, pop_old[i]->P, n_vars * sizeof(double));
+
                 Rng rng;
-                rng_seed(&rng, params->seed + (unsigned)(iter * 1315423911u + (unsigned)i * 2654435761u));
+                rng_seed(&rng, params->seed +
+                              (unsigned)(iter * 1315423911u +
+                              (unsigned)i * 2654435761u));
 
                 for (int j = 0; j < n; ++j) {
-                    if (cost[j] < cost[i]) {
-                        move_firefly(data, params, pop[i], pop[j], &rng);
+                    if (cost_old[j] < cost_old[i]) {
+                        move_firefly(data, params, pop_new[i], pop_old[j], &rng);
                     }
                 }
             }
         }
 
-        // recalcula custos
-        if (use_openmp) {
+        // COST: calcula custo da nova pop
 #ifdef _OPENMP
+        if (use_openmp) {
 #pragma omp parallel for schedule(static)
             for (int i = 0; i < n; ++i) {
-                cost[i] = ded_cost(pop[i], data);
+                cost_new[i] = ded_cost(pop_new[i], data);
             }
-#else
-            for (int i = 0; i < n; ++i) {
-                cost[i] = ded_cost(pop[i], data);
-            }
+        } else
 #endif
-        } else {
+        {
             for (int i = 0; i < n; ++i) {
-                cost[i] = ded_cost(pop[i], data);
+                cost_new[i] = ded_cost(pop_new[i], data);
             }
         }
 
-        // atualiza melhor
+        // BEST
         for (int i = 0; i < n; ++i) {
-            if (cost[i] < best_cost) {
-                best_cost = cost[i];
-                memcpy(best->P, pop[i]->P, n_vars * sizeof(double));
+            if (cost_new[i] < best_cost) {
+                best_cost = cost_new[i];
+                memcpy(best->P, pop_new[i]->P, n_vars * sizeof(double));
             }
         }
+
+        // SWAP buffers
+        Solution **tmpP = pop_old; pop_old = pop_new; pop_new = tmpP;
+        double *tmpC = cost_old; cost_old = cost_new; cost_new = tmpC;
     }
 
-cleanup:
+    // cleanup
     for (int i = 0; i < n; ++i) {
-        solution_destroy(pop[i]);
+        solution_destroy(popA[i]);
+        solution_destroy(popB[i]);
     }
-    free(pop);
-    free(cost);
+    free(popA); free(popB);
+    free(costA); free(costB);
+
     return best_cost;
 }
+
 double firefly_optimize(const DedData *data,
                         const FireflyParams *params,
                         Solution *best) {
