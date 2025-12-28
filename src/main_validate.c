@@ -1,4 +1,4 @@
-/ Programa simples para validar leitura de dados e função de custo
+// Programa simples para validar leitura de dados e função de custo
 #include <stdio.h>
 #include "ded_data.h"
 #include "ded_model.h"
