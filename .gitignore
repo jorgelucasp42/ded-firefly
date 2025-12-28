@@ -1,0 +1,22 @@
+# Compilados
+*.o
+*.a
+*.so
+*.out
+*.exe
+
+# Pastas de build (se você usar)
+build/
+bin/
+
+# Debug/IDE
+.vscode/
+.idea/
+*.swp
+
+# Mac/Windows lixo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
