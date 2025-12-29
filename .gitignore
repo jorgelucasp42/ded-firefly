@@ -21,3 +21,8 @@ Thumbs.db
 # Logs
 *.log
 tkn
+
+# Binaries
+bin_omp
+bin_seq
+bin_validate

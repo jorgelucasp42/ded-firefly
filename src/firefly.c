@@ -41,6 +41,7 @@ static double run_firefly_core(const DedData *data,
                                const FireflyParams *params,
                                Solution *best,
                                int use_openmp) {
+    (void)use_openmp;
     int n = params->n_fireflies;
     size_t n_vars = (size_t)data->n_units * (size_t)data->n_hours;
 
