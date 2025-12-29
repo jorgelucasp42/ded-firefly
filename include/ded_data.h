@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#define MAX_UNITS  10
+#define MAX_UNITS  50
 #define MAX_HOURS  24
 
 typedef struct {
