@@ -30,7 +30,7 @@ int main(void) {
         .alpha       = 0.25,
         .beta0       = 1.0,
         .gamma       = 1e-3,
-        .seed        = 42u
+        .seed        = 1234u
     };
 
     double t0 = now_sec();

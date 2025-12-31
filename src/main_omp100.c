@@ -9,12 +9,12 @@
 int main(void) {
     DedData data = {0};
 
-    if (ded_load_units(&data, "data/units_victoire10.csv") != 0) {
-        fprintf(stderr, "Erro ao carregar units_victoire10.csv\n");
+    if (ded_load_units(&data, "data/units_victoire100.csv") != 0) {
+        fprintf(stderr, "Erro ao carregar units_victoire100.csv\n");
         return 1;
     }
-    if (ded_load_load(&data, "data/load_24h_victoire10.csv") != 0) {
-        fprintf(stderr, "Erro ao carregar load_24h_victoire10.csv\n");
+    if (ded_load_load(&data, "data/load_24h_victoire100.csv") != 0) {
+        fprintf(stderr, "Erro ao carregar load_24h_victoire100.csv\n");
         return 1;
     }
 
