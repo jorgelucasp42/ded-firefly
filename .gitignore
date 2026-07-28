@@ -26,3 +26,6 @@ tkn
 bin_omp
 bin_seq
 bin_validate
+
+# Config local do Claude Code (específico da máquina)
+.claude/

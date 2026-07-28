@@ -1,0 +1,4 @@
+f=320 seed=42 iters=500
+seq_cost=10679912.7331289891  seq_time=111.596802
+acc_cost=10596684.5079825260  acc_time=16.354692
+speedup=6,82x  gap=-0,7793%

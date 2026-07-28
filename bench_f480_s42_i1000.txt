@@ -1,0 +1,6 @@
+f=480 seed=42 iters=1000 threads=12
+seq_cost=10650825.1632054094  seq_time=490.984770
+omp_cost=10650825.1632054094  omp_time=89.701357
+acc_cost=10580674.5645853933  acc_time=62.088481
+speedup_omp=5,47x  speedup_acc=7,91x
+gap_omp=0,0000%  gap_acc=-0,6586%

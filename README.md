@@ -31,17 +31,18 @@ O objetivo do projeto é resolver o **Problema de Despacho Econômico Dinâmico 
 ```text
 ded-firefly/
 │
-├── data/           # Arquivos de entrada (dados do sistema)
-├── include/        # Arquivos de cabeçalho (.h)
-├── src/            # Código-fonte (.c)
-│   ├── ded_model.c
-│   ├── main_seq.c
-│   ├── main_omp.c
-│   ├── main_validate.c
-│   └── utils.c
+├── data/               # Arquivos de entrada (unidades e curva de carga), tamanhos: 10/100/200/500
+├── include/            # Cabeçalhos (.h)
+├── src/
+│   ├── core/           # ded_data.c, ded_model.c, utils.c (modelo DED e utilitários, comum a todas as versões)
+│   ├── firefly/        # firefly_seq.c, firefly_omp.c, firefly_openacc*.c (motor da metaheurística por versão)
+│   └── apps/           # main_seq*.c, main_omp*.c, main_acc*.c, main_validate.c (pontos de entrada/CLI)
 │
-├── tests/
-├── docs/
+├── bin/                # Binários compilados (gerado pelo make, não versionado)
+├── bench_compare.sh    # Compara SEQ vs OMP vs ACC para uma dada configuração
+├── grid_search.sh      # Varredura de hiperparâmetros (alpha/gamma) do Firefly
+├── bench_f*.txt        # Resultados brutos de benchmarks já executados
+├── docs/               # Protocolo de testes e resultados consolidados para o TCC
 ├── Makefile
 ├── .gitignore
 └── README.md
@@ -96,15 +97,6 @@ Metaheurísticas aplicadas a sistemas elétricos, despacho econômico dinâmico 
 
 ---
 
-## 🚧 Trabalhos Futuros
-
-- Implementação em GPU
-- Inclusão de efeito de válvula
-- Análise estatística
-- Comparação com outras metaheurísticas
-
----
-
 ## 👤 Autor
 
 **Jorge Lucas** 
@@ -114,4 +106,4 @@ Projeto acadêmico – 2025
 
 ## 📄 Licença
 
-Uso acadêmico e educacional.
+Uso acadêmico.
