@@ -26,3 +26,4 @@ tkn
 bin_omp
 bin_seq
 bin_validate
+bin_*

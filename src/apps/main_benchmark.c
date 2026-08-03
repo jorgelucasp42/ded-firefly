@@ -2,6 +2,7 @@
 #include "ded_data.h"
 #include "ded_model.h"
 #include "firefly.h"
+#include <time.h>
 
 int main(void) {
     DedData data = {0};
@@ -18,12 +19,12 @@ int main(void) {
     Solution *best = solution_create(&data);
 
     FireflyParams params = {
-        .n_fireflies = 40,
-        .max_iters   = 500,
+        .n_fireflies = 60,
+        .max_iters   = 5000,
         .alpha       = 0.25,
         .beta0       = 1.0,
-        .gamma       = 1e-3,
-        .seed        = 1234u
+        .gamma       = 3e-7,
+        .seed = (unsigned) time(NULL)
     };
 
     double best_cost = firefly_optimize(&data, &params, best);

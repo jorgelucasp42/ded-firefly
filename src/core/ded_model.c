@@ -149,7 +149,7 @@ double ded_cost(const Solution *s, const DedData *data) {
             size_t idx = (size_t)i * (size_t)n_hours + (size_t)h;
             double p = s->P[idx];
 
-            double fuel = u->a + u->b * p + u->c * p * p + fabs(u->e * sin(u->f * (u->Pmin - p)));
+            double fuel = u->a * p * p + u->b * p + u->c + fabs(u->e * sin(u->f * (u->Pmin - p)));
             total += fuel;
             sum_p += p;
         }

@@ -96,15 +96,6 @@ Metaheurísticas aplicadas a sistemas elétricos, despacho econômico dinâmico 
 
 ---
 
-## 🚧 Trabalhos Futuros
-
-- Implementação em GPU
-- Inclusão de efeito de válvula
-- Análise estatística
-- Comparação com outras metaheurísticas
-
----
-
 ## 👤 Autor
 
 **Jorge Lucas** 
@@ -114,4 +105,4 @@ Projeto acadêmico – 2025
 
 ## 📄 Licença
 
-Uso acadêmico e educacional.
+Uso acadêmico.

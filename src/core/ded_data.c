@@ -6,7 +6,7 @@
 static int is_header_line(const char *line) {
     // Se começa com letra, provavelmente é header
     while (*line == ' ' || *line == '\t') line++;
-    return (*line >= 'A' && *line <= 'z');
+    return ((*line >= 'A' && *line <= 'Z') || (*line >= 'a' && *line <= 'z'));
 }
 
 int ded_load_units(DedData *data, const char *path) {

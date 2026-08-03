@@ -2,6 +2,7 @@
 #include "utils.h"
 
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -17,7 +18,8 @@ static void move_firefly(const DedData *data,
                          const FireflyParams *params,
                          Solution *xi,
                          const Solution *xj,
-                         Rng *rng) {
+                         Rng *rng,
+                         double alpha_scale) {
     size_t n_vars = (size_t)data->n_units * (size_t)data->n_hours;
     double r2 = solution_distance2(xi, xj, n_vars);
     double beta = params->beta0 * exp(-params->gamma * r2);
@@ -29,12 +31,11 @@ static void move_firefly(const DedData *data,
 
         for (int h = 0; h < data->n_hours; ++h) {
             size_t idx = (size_t)i * (size_t)data->n_hours + (size_t)h;
-            double eps = params->alpha * (rng_uniform01(rng) - 0.5) * span;
+            double eps = alpha_scale * (rng_uniform01(rng) - 0.5) * span;
             xi->P[idx] += beta * (xj->P[idx] - xi->P[idx]) + eps;
         }
     }
 
-    solution_repair(xi, data);
 }
 
 static double run_firefly_core(const DedData *data,
@@ -87,8 +88,20 @@ static double run_firefly_core(const DedData *data,
     Solution **pop_new = popB;
     double *cost_old = costA;
     double *cost_new = costB;
+    Solution *trial = solution_create(data);
+    if (!trial) {
+        for (int i = 0; i < n; ++i) {
+            solution_destroy(popA[i]);
+            solution_destroy(popB[i]);
+        }
+        free(popA); free(popB);
+        free(costA); free(costB);
+        return 1e30;
+    }
 
     for (int iter = 0; iter < params->max_iters; ++iter) {
+        double alpha_iter = params->alpha * (1.0 - (double)iter / params->max_iters);
+        if (alpha_iter < 1e-4) alpha_iter = 1e-4;
 
         // MOVE: escreve em pop_new[i], lê somente pop_old[j]
 #ifdef _OPENMP
@@ -105,9 +118,10 @@ static double run_firefly_core(const DedData *data,
 
                 for (int j = 0; j < n; ++j) {
                     if (cost_old[j] < cost_old[i]) {
-                        move_firefly(data, params, pop_new[i], pop_old[j], &rng);
+                        move_firefly(data, params, pop_new[i], pop_old[j], &rng, alpha_iter);
                     }
                 }
+                solution_repair(pop_new[i], data);
             }
         } else
 #endif
@@ -122,9 +136,34 @@ static double run_firefly_core(const DedData *data,
 
                 for (int j = 0; j < n; ++j) {
                     if (cost_old[j] < cost_old[i]) {
-                        move_firefly(data, params, pop_new[i], pop_old[j], &rng);
+                        move_firefly(data, params, pop_new[i], pop_old[j], &rng, alpha_iter);
                     }
                 }
+                solution_repair(pop_new[i], data);
+            }
+        }
+
+        memcpy(pop_new[0]->P, best->P, n_vars * sizeof(double));
+
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            memcpy(trial->P, best->P, n_vars * sizeof(double));
+
+            int n_mut = 1 + (int)(rng_u32(&base) % 3);
+            for (int m = 0; m < n_mut; ++m) {
+                size_t idx = (size_t)(rng_u32(&base) % n_vars);
+                int unit_idx = (int)(idx / (size_t)data->n_hours);
+                const UnitData *u = &data->units[unit_idx];
+                double span = u->Pmax - u->Pmin;
+                if (span <= 0.0) span = 1.0;
+                double delta = ((double)((rng_u32(&base) % 5) - 2)) * 0.01 * span;
+                trial->P[idx] += delta;
+            }
+
+            solution_repair(trial, data);
+            double trial_cost = ded_cost(trial, data);
+            if (trial_cost < best_cost) {
+                best_cost = trial_cost;
+                memcpy(best->P, trial->P, n_vars * sizeof(double));
             }
         }
 
@@ -143,6 +182,9 @@ static double run_firefly_core(const DedData *data,
             }
         }
 
+        memcpy(pop_new[0]->P, best->P, n_vars * sizeof(double));
+        cost_new[0] = best_cost;
+
         // BEST
         for (int i = 0; i < n; ++i) {
             if (cost_new[i] < best_cost) {
@@ -151,12 +193,17 @@ static double run_firefly_core(const DedData *data,
             }
         }
 
+        if ((iter + 1) % 500 == 0) {
+            printf("iter=%d best_cost=%.10f\n", iter + 1, best_cost);
+        }
+
         // SWAP buffers
         Solution **tmpP = pop_old; pop_old = pop_new; pop_new = tmpP;
         double *tmpC = cost_old; cost_old = cost_new; cost_new = tmpC;
     }
 
     // cleanup
+    solution_destroy(trial);
     for (int i = 0; i < n; ++i) {
         solution_destroy(popA[i]);
         solution_destroy(popB[i]);
