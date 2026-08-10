@@ -5,6 +5,7 @@
 #include <time.h>
 #include "ded_data.h"
 #include "ded_model.h"
+#include "ded_validation.h"
 #include "firefly.h"
 #include "utils.h"
 
@@ -12,9 +13,10 @@ int main(int argc, char **argv) {
     DedData data = {0};
     int n_fireflies = (argc > 1) ? atoi(argv[1]) : 60;
     unsigned seed = (argc > 2) ? (unsigned)atoi(argv[2]) : (unsigned)time(NULL);
+    int max_iters = (argc > 3) ? atoi(argv[3]) : 5000;
 
-    if (n_fireflies <= 0) {
-        fprintf(stderr, "Numero de vagalumes deve ser maior que zero.\n");
+    if (n_fireflies <= 0 || max_iters <= 0) {
+        fprintf(stderr, "Uso: %s [n_fireflies] [seed] [max_iters]\n", argv[0]);
         return 1;
     }
 
@@ -35,7 +37,7 @@ int main(int argc, char **argv) {
 
     FireflyParams params = {
         .n_fireflies = n_fireflies,
-        .max_iters   = 5000,
+        .max_iters   = max_iters,
         .alpha       = 0.25,
         .beta0       = 1.0,
         .gamma       = 3e-7,
@@ -44,6 +46,7 @@ int main(int argc, char **argv) {
 
     printf("Dataset: data/units_victoire100.csv / data/load_24h_victoire100.csv\n");
     printf("Vagalumes: %d\n", params.n_fireflies);
+    printf("Iteracoes: %d\n", params.max_iters);
     printf("Seed: %u\n", params.seed);
     fflush(stdout);
 
@@ -58,6 +61,8 @@ int main(int argc, char **argv) {
 
     printf("Melhor custo encontrado (omp, %d threads): %.6f\n", n_threads, best_cost);
     printf("Tempo: %.3f s\n", t1 - t0);
+    DedValidationReport validation = ded_validate_solution(&data, best);
+    ded_print_validation_report(&data, &validation);
 
     solution_destroy(best);
     return 0;

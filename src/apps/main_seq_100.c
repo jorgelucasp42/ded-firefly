@@ -4,6 +4,7 @@
 
 #include "ded_data.h"
 #include "ded_model.h"
+#include "ded_validation.h"
 #include "firefly.h"
 #include "utils.h"
 
@@ -13,7 +14,14 @@ int main(int argc, char **argv) {
     const char *units_file = "data/units_victoire100.csv";
     const char *load_file  = "data/load_24h_victoire100.csv";
 
-    unsigned seed = (argc > 1) ? (unsigned) atoi(argv[1]) : (unsigned) time(NULL);
+    int n_fireflies = (argc > 1) ? atoi(argv[1]) : 60;
+    unsigned seed = (argc > 2) ? (unsigned) atoi(argv[2]) : (unsigned) time(NULL);
+    int max_iters = (argc > 3) ? atoi(argv[3]) : 5000;
+
+    if (n_fireflies <= 0 || max_iters <= 0) {
+        fprintf(stderr, "Uso: %s [n_fireflies] [seed] [max_iters]\n", argv[0]);
+        return 1;
+    }
 
     if (ded_load_units(&data, units_file) != 0) {
         fprintf(stderr, "Erro ao carregar %s\n", units_file);
@@ -32,8 +40,8 @@ int main(int argc, char **argv) {
     }
 
     FireflyParams params = {
-        .n_fireflies = 60,
-        .max_iters   = 5000,
+        .n_fireflies = n_fireflies,
+        .max_iters   = max_iters,
         .alpha       = 0.25,
         .beta0       = 1.0,
         .gamma       = 3e-7,
@@ -57,6 +65,8 @@ int main(int argc, char **argv) {
     printf("--------------------------------\n");
     printf("Melhor custo encontrado: %.6f\n", best_cost);
     printf("Tempo de execução: %.6f s\n", elapsed);
+    DedValidationReport validation = ded_validate_solution(&data, best);
+    ded_print_validation_report(&data, &validation);
     printf("================================\n\n");
 
     solution_destroy(best);

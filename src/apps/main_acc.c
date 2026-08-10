@@ -4,17 +4,50 @@
 
 #include "ded_data.h"
 #include "ded_model.h"
+#include "ded_validation.h"
 #include "firefly.h"
 #include "utils.h"
 
 int main(int argc, char **argv) {
     DedData data = {0};
 
-    /* argv: seed  OU  units_file load_file seed */
-    const char *units_file = (argc == 4) ? argv[1] : "data/units_victoire10.csv";
-    const char *load_file  = (argc == 4) ? argv[2] : "data/load_24h_victoire10.csv";
-    unsigned seed = (argc == 4) ? (unsigned)atoi(argv[3]) :
-                    (argc == 2) ? (unsigned)atoi(argv[1]) : (unsigned)time(NULL);
+    /*
+     * Uso padronizado:
+     *   ./bin/bin_acc [n_fireflies] [seed] [max_iters]
+     *   ./bin/bin_acc units_file load_file n_fireflies seed [max_iters]
+     *
+     * Compatibilidade antiga:
+     *   ./bin/bin_acc seed
+     *   ./bin/bin_acc units_file load_file seed
+     */
+    const char *units_file = "data/units_victoire10.csv";
+    const char *load_file  = "data/load_24h_victoire10.csv";
+    int n_fireflies = 60;
+    unsigned seed = (unsigned)time(NULL);
+    int max_iters = 5000;
+
+    if (argc >= 4 && argv[1][0] != '\0' &&
+        (argv[1][0] < '0' || argv[1][0] > '9')) {
+        units_file = argv[1];
+        load_file = argv[2];
+        if (argc >= 5) {
+            n_fireflies = atoi(argv[3]);
+            seed = (unsigned)atoi(argv[4]);
+            if (argc >= 6) max_iters = atoi(argv[5]);
+        } else {
+            seed = (unsigned)atoi(argv[3]);
+        }
+    } else {
+        if (argc >= 2) n_fireflies = atoi(argv[1]);
+        if (argc >= 3) seed = (unsigned)atoi(argv[2]);
+        if (argc >= 4) max_iters = atoi(argv[3]);
+    }
+
+    if (n_fireflies <= 0 || max_iters <= 0) {
+        fprintf(stderr, "Uso: %s [n_fireflies] [seed] [max_iters]\n", argv[0]);
+        fprintf(stderr, " ou: %s units_file load_file n_fireflies seed [max_iters]\n", argv[0]);
+        return 1;
+    }
 
     if (ded_load_units(&data, units_file) != 0) {
         fprintf(stderr, "Erro ao carregar %s\n", units_file);
@@ -33,8 +66,8 @@ int main(int argc, char **argv) {
     }
 
     FireflyParams params = {
-        .n_fireflies = 60,
-        .max_iters   = 5000,
+        .n_fireflies = n_fireflies,
+        .max_iters   = max_iters,
         .alpha       = 0.25,
         .beta0       = 1.0,
         .gamma       = 3e-7,
@@ -58,6 +91,18 @@ int main(int argc, char **argv) {
     printf("--------------------------------\n");
     printf("Melhor custo encontrado: %.6f\n", best_cost);
     printf("Tempo de execução: %.6f s\n", elapsed);
+    DedValidationReport validation = ded_validate_solution(&data, best);
+    ded_print_validation_report(&data, &validation);
+    printf("RESULT_COST=%.10f\n", best_cost);
+    printf("RESULT_TIME=%.6f\n", elapsed);
+    printf("RESULT_VALID_OK=%d\n", ded_validation_is_ok(&validation, 1e-5));
+    printf("RESULT_MAX_BALANCE=%.12f\n", validation.max_balance_abs);
+    printf("RESULT_MAX_PMIN=%.12f\n", validation.max_pmin_violation);
+    printf("RESULT_MAX_PMAX=%.12f\n", validation.max_pmax_violation);
+    printf("RESULT_MAX_RAMP_UP=%.12f\n", validation.max_ramp_up_violation);
+    printf("RESULT_MAX_RAMP_DOWN=%.12f\n", validation.max_ramp_down_violation);
+    printf("RESULT_NAN=%d\n", validation.nan_count);
+    printf("RESULT_INF=%d\n", validation.inf_count);
     printf("================================\n\n");
 
     solution_destroy(best);

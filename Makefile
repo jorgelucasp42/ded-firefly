@@ -6,7 +6,7 @@ ACC_FLAGS ?= -O3 -acc -Minfo=accel
 INCLUDES=-Iinclude
 LIBS=-lm
 
-CORE=src/core/utils.c src/core/ded_data.c src/core/ded_model.c
+CORE=src/core/utils.c src/core/ded_data.c src/core/ded_model.c src/core/ded_validation.c
 SEQ_SRC=src/firefly/firefly_seq.c src/apps/main_seq.c
 SEQ100_SRC=src/firefly/firefly_seq.c src/apps/main_seq_100.c
 SEQ200_SRC=src/firefly/firefly_seq.c src/apps/main_seq_200.c

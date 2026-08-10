@@ -10,11 +10,40 @@
 int main(int argc, char **argv) {
     DedData data = {0};
 
-    /* argv: seed  OU  units_file load_file seed */
-    const char *units_file = (argc == 4) ? argv[1] : "data/units_victoire10.csv";
-    const char *load_file  = (argc == 4) ? argv[2] : "data/load_24h_victoire10.csv";
-    unsigned seed = (argc == 4) ? (unsigned)atoi(argv[3]) :
-                    (argc == 2) ? (unsigned)atoi(argv[1]) : (unsigned)time(NULL);
+    /*
+     * Experimento de população. Padrão preservado em 512 vagalumes.
+     * Uso:
+     *   ./bin/bin_acc_pop [n_fireflies] [seed] [max_iters]
+     *   ./bin/bin_acc_pop units_file load_file n_fireflies seed [max_iters]
+     */
+    const char *units_file = "data/units_victoire10.csv";
+    const char *load_file  = "data/load_24h_victoire10.csv";
+    int n_fireflies = 512;
+    unsigned seed = (unsigned)time(NULL);
+    int max_iters = 5000;
+
+    if (argc >= 4 && argv[1][0] != '\0' &&
+        (argv[1][0] < '0' || argv[1][0] > '9')) {
+        units_file = argv[1];
+        load_file = argv[2];
+        if (argc >= 5) {
+            n_fireflies = atoi(argv[3]);
+            seed = (unsigned)atoi(argv[4]);
+            if (argc >= 6) max_iters = atoi(argv[5]);
+        } else {
+            seed = (unsigned)atoi(argv[3]);
+        }
+    } else {
+        if (argc >= 2) n_fireflies = atoi(argv[1]);
+        if (argc >= 3) seed = (unsigned)atoi(argv[2]);
+        if (argc >= 4) max_iters = atoi(argv[3]);
+    }
+
+    if (n_fireflies <= 0 || max_iters <= 0) {
+        fprintf(stderr, "Uso: %s [n_fireflies] [seed] [max_iters]\n", argv[0]);
+        fprintf(stderr, " ou: %s units_file load_file n_fireflies seed [max_iters]\n", argv[0]);
+        return 1;
+    }
 
     if (ded_load_units(&data, units_file) != 0) {
         fprintf(stderr, "Erro ao carregar %s\n", units_file);
@@ -33,8 +62,8 @@ int main(int argc, char **argv) {
     }
 
     FireflyParams params = {
-        .n_fireflies = 512,
-        .max_iters   = 5000,
+        .n_fireflies = n_fireflies,
+        .max_iters   = max_iters,
         .alpha       = 0.25,
         .beta0       = 1.0,
         .gamma       = 3e-7,

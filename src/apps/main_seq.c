@@ -10,11 +10,11 @@
 
 static void print_usage(const char *prog) {
     fprintf(stderr, "Uso:\n");
-    fprintf(stderr, "  %s [seed]\n", prog);
-    fprintf(stderr, "  %s [seed] --alpha A --gamma G\n", prog);
-    fprintf(stderr, "  %s units_file load_file seed [--alpha A --gamma G]\n", prog);
+    fprintf(stderr, "  %s [n_fireflies] [seed] [max_iters]\n", prog);
+    fprintf(stderr, "  %s [n_fireflies] [seed] [max_iters] --alpha A --gamma G\n", prog);
+    fprintf(stderr, "  %s units_file load_file n_fireflies seed [max_iters] [--alpha A --gamma G]\n", prog);
     fprintf(stderr, "Exemplo:\n");
-    fprintf(stderr, "  %s 42 --alpha 0.10 --gamma 1e-6\n", prog);
+    fprintf(stderr, "  %s 60 42 5000 --alpha 0.10 --gamma 1e-6\n", prog);
 }
 
 int main(int argc, char **argv) {
@@ -22,7 +22,9 @@ int main(int argc, char **argv) {
 
     const char *units_file = "data/units_victoire10.csv";
     const char *load_file  = "data/load_24h_victoire10.csv";
+    int n_fireflies        = 60;
     unsigned seed          = (unsigned)time(NULL);
+    int max_iters          = 5000;
     double alpha           = 0.25;
     double gamma_val       = 3e-7;
 
@@ -38,26 +40,45 @@ int main(int argc, char **argv) {
         }
     }
 
-    /* segunda passagem: argumentos posicionais */
-    int pos = 0;
-    for (int i = 1; i < argc; ++i) {
-        /* pula flags e seus valores */
+    /* segunda passagem: argumentos posicionais padronizados */
+    char *pos_args[6];
+    int n_pos = 0;
+    for (int i = 1; i < argc && n_pos < 6; ++i) {
         if (strcmp(argv[i], "--alpha") == 0 ||
             strcmp(argv[i], "--gamma") == 0) { ++i; continue; }
         if (argv[i][0] == '-') continue;
+        pos_args[n_pos++] = argv[i];
+    }
 
-        if (pos == 0) {
-            /* seed (só dígitos) ou units_file */
-            int is_num = 1;
-            for (int k = 0; argv[i][k]; ++k)
-                if (argv[i][k] < '0' || argv[i][k] > '9') { is_num = 0; break; }
-            if (is_num) { seed = (unsigned)atoi(argv[i]); pos = 3; }
-            else        { units_file = argv[i];            pos = 1; }
-        } else if (pos == 1) {
-            load_file = argv[i]; pos = 2;
-        } else if (pos == 2) {
-            seed = (unsigned)atoi(argv[i]); pos = 3;
+    if (n_pos > 0) {
+        int first_is_num = 1;
+        for (int k = 0; pos_args[0][k]; ++k) {
+            if (pos_args[0][k] < '0' || pos_args[0][k] > '9') {
+                first_is_num = 0;
+                break;
+            }
         }
+
+        if (first_is_num) {
+            n_fireflies = atoi(pos_args[0]);
+            if (n_pos > 1) seed = (unsigned)atoi(pos_args[1]);
+            if (n_pos > 2) max_iters = atoi(pos_args[2]);
+        } else {
+            if (n_pos < 4) {
+                print_usage(argv[0]);
+                return 1;
+            }
+            units_file = pos_args[0];
+            load_file = pos_args[1];
+            n_fireflies = atoi(pos_args[2]);
+            seed = (unsigned)atoi(pos_args[3]);
+            if (n_pos > 4) max_iters = atoi(pos_args[4]);
+        }
+    }
+
+    if (n_fireflies <= 0 || max_iters <= 0) {
+        print_usage(argv[0]);
+        return 1;
     }
 
     if (ded_load_units(&data, units_file) != 0) {
@@ -73,8 +94,8 @@ int main(int argc, char **argv) {
     if (!best) { fprintf(stderr, "Erro ao criar solução.\n"); return 1; }
 
     FireflyParams params = {
-        .n_fireflies = 60,
-        .max_iters   = 5000,
+        .n_fireflies = n_fireflies,
+        .max_iters   = max_iters,
         .alpha       = alpha,
         .beta0       = 1.0,
         .gamma       = gamma_val,

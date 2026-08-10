@@ -10,6 +10,14 @@
 
 int main(int argc, char **argv) {
     DedData data = {0};
+    int n_fireflies = (argc > 1) ? atoi(argv[1]) : 60;
+    unsigned seed = (argc > 2) ? (unsigned)atoi(argv[2]) : (unsigned)time(NULL);
+    int max_iters = (argc > 3) ? atoi(argv[3]) : 5000;
+
+    if (n_fireflies <= 0 || max_iters <= 0) {
+        fprintf(stderr, "Uso: %s [n_fireflies] [seed] [max_iters]\n", argv[0]);
+        return 1;
+    }
 
     if (ded_load_units(&data, "data/units_victoire500.csv") != 0) {
         fprintf(stderr, "Erro ao carregar units_victoire500.csv\n");
@@ -27,12 +35,12 @@ int main(int argc, char **argv) {
     }
 
     FireflyParams params = {
-        .n_fireflies = 60,
-        .max_iters   = 5000,
+        .n_fireflies = n_fireflies,
+        .max_iters   = max_iters,
         .alpha       = 0.25,
         .beta0       = 1.0,
         .gamma       = 3e-7,
-        .seed        = (argc > 1) ? (unsigned)atoi(argv[1]) : (unsigned)time(NULL)
+        .seed        = seed
     };
 
     double t0 = now_sec();
@@ -45,6 +53,9 @@ int main(int argc, char **argv) {
 #endif
 
     printf("Dataset: data/units_victoire500.csv / data/load_24h_victoire500.csv\n");
+    printf("Vagalumes: %d\n", params.n_fireflies);
+    printf("Iteracoes: %d\n", params.max_iters);
+    printf("Seed: %u\n", params.seed);
     printf("Melhor custo encontrado (omp, %d threads): %.6f\n", n_threads, best_cost);
     printf("Tempo: %.3f s\n", t1 - t0);
 

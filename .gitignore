@@ -29,3 +29,4 @@ bin_validate
 
 # Config local do Claude Code (específico da máquina)
 .claude/
+bin_*
