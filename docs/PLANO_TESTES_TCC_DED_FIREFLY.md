@@ -54,13 +54,28 @@ quanto à corretude nesta fase, não à equivalência numérica — ver seção 
 
 Sistema: 100 unidades, 24 horas.
 
+O tempo de execução do Firefly cresce em torno de população^1,8 (o passo de atração compara cada
+vagalume com todos os outros a cada iteração — quase quadrático). Medido em piloto real:
+SEQ(pop=60, iters=1000) = 10,7s; SEQ(pop=480, iters=1000) = 500,5s (~47x de tempo para 8x de
+população). As 3 populações maiores (320/400/480) respondem sozinhas por ~2/3 do custo
+computacional da matriz completa. Por isso a amostragem é **estratificada por custo**, não uniforme:
+
 - populações: 60, 120, 160, 200, 240, 280, 320, 400 e 480;
 - iterações: 1.000;
-- sementes: no mínimo 10 sementes fixas;
-- OpenMP: 1, 2, 4, 8 e 12 threads;
-- OpenACC: `bin_acc_sync_bench` (versão oficial do estudo; não usar `bin_acc` aqui).
+- **SEQ, OpenMP@12 threads e OpenACC** (`bin_acc_sync_bench`; não usar `bin_acc` — ver seção 1) rodam
+  em **todas as 9 populações** — é o que responde ao objetivo principal;
+- **varredura completa de threads OpenMP** (1, 2, 4, 8, 12) roda só nas populações-âncora **60, 240
+  e 480** (menor/meio/maior), alimentando a figura de eficiência OpenMP (seção 7, item 5) sem repetir
+  o sweep nos 9 pontos;
+- sementes: **5 fixas** (42, 123, 777, 1234, 9999) nas 6 populações mais baratas (60-280); **3 fixas**
+  (42, 123, 777) nas 3 mais caras (320-400-480) — a Fase D já cobre a estatística de 30 sementes na
+  configuração final escolhida, então aqui o objetivo é a tendência de escalabilidade, não a
+  distribuição completa em cada ponto;
+- total: 169 execuções (vs. 630 de uma matriz uniforme 9×10×7) — ver `run_phase_b.sh`.
 
-Objetivo: identificar o ponto em que CPU paralela e GPU amortizam seus custos.
+Objetivo: (1) identificar o ponto em que CPU paralela (OpenMP@12) e GPU (OpenACC) amortizam seus
+custos frente ao SEQ; (2) gerar o dataset de escalabilidade por número de threads OpenMP (1→12) nas
+populações-âncora, usado na figura de speedup/eficiência (seção 7, item 5).
 
 ### Fase C — Escalabilidade pelo tamanho do sistema
 
