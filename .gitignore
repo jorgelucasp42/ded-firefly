@@ -20,6 +20,7 @@ Thumbs.db
 
 # Logs
 *.log
+!results/**/*.log
 tkn
 
 # Binaries

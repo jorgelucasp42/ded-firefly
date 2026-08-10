@@ -54,6 +54,11 @@ int main(int argc, char **argv) {
 
     printf("RESULT_COST=%.10f\n", best_cost);
     printf("RESULT_TIME=%.6f\n",  elapsed);
+    printf("RESULT_ALPHA=%.6f\n", params.alpha);
+    printf("RESULT_BETA0=%.6f\n", params.beta0);
+    printf("RESULT_GAMMA=%.12g\n", params.gamma);
+    printf("RESULT_N_UNITS=%d\n", data.n_units);
+    printf("RESULT_N_HOURS=%d\n", data.n_hours);
     DedValidationReport validation = ded_validate_solution(&data, best);
     printf("RESULT_VALID_OK=%d\n", ded_validation_is_ok(&validation, 1e-5));
     printf("RESULT_MAX_BALANCE=%.12f\n", validation.max_balance_abs);
