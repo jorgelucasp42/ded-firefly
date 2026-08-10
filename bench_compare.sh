@@ -10,12 +10,12 @@ ITERS=${3:-1000}
 
 SEQ_BIN="./bin/bin_seq_bench"
 OMP_BIN="./bin/bin_omp_bench"
-ACC_BIN="./bin/bin_acc_bench"
+ACC_BIN="./bin/bin_acc_sync_bench"
 
 for bin in "$SEQ_BIN" "$OMP_BIN" "$ACC_BIN"; do
     if [[ ! -x "$bin" ]]; then
         echo "ERRO: '$bin' nao encontrado."
-        echo "Rode: make bench_seq bench_omp bench_acc"
+        echo "Rode: make bench_seq bench_omp bench_acc_sync"
         exit 1
     fi
 done

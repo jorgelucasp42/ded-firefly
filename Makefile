@@ -18,7 +18,7 @@ OMP500_SRC=src/firefly/firefly_omp.c src/apps/main_omp_500.c
 ACC_SYNC_SRC=src/firefly/firefly_openacc_sync.c src/apps/main_acc_sync.c
 VALIDATE_SRC=src/apps/main_validate.c
 
-.PHONY: all validate seq omp acc_sync seq100 omp100 seq200 omp200 omp500 seq500 clean bench_seq bench_omp bench_acc bench_acc_sync
+.PHONY: all validate seq omp acc_sync seq100 omp100 seq200 omp200 omp500 seq500 clean bench_seq bench_omp bench_acc_sync
 
 all: validate seq omp
 
@@ -63,15 +63,11 @@ seq500:
 	$(CC) $(CFLAGS) $(INCLUDES) $(CORE) $(SEQ500_SRC) $(LIBS) -o bin/bin_seq500
 
 clean:
-	rm -f bin/bin_validate bin/bin_seq bin/bin_omp bin/bin_acc_sync bin/bin_seq100 bin/bin_seq200 bin/bin_omp100 bin/bin_omp200 bin/bin_omp500 bin/bin_seq500 bin/bin_seq_bench bin/bin_omp_bench bin/bin_acc_bench bin/bin_acc_sync_bench
+	rm -f bin/bin_validate bin/bin_seq bin/bin_omp bin/bin_acc_sync bin/bin_seq100 bin/bin_seq200 bin/bin_omp100 bin/bin_omp200 bin/bin_omp500 bin/bin_seq500 bin/bin_seq_bench bin/bin_omp_bench bin/bin_acc_sync_bench
 
 bench_seq:
 	mkdir -p bin
 	$(CC) $(CFLAGS) $(INCLUDES) $(CORE) src/firefly/firefly_seq.c src/apps/main_seq_bench.c $(LIBS) -o bin/bin_seq_bench
-
-bench_acc:
-	mkdir -p bin
-	$(ACC_CC) $(ACC_FLAGS) $(INCLUDES) $(CORE) src/firefly/firefly_openacc_sync.c src/apps/main_acc_sync_bench.c $(LIBS) -o bin/bin_acc_bench
 
 bench_acc_sync:
 	mkdir -p bin
