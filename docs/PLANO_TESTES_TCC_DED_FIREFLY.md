@@ -85,10 +85,18 @@ populações-âncora, usado na figura de speedup/eficiência (seção 7, item 5)
   vence: 19,9s vs 25,1s); 320 fica folgadamente do lado favorável à GPU (ACC ~1,34x mais rápido que
   OMP@12) sem ser o ponto computacionalmente mais caro (480);
 - iterações: 1.000;
-- sementes: no mínimo 10 sementes fixas;
-- versões: SEQ, OpenMP e OpenACC (`bin_acc_sync_bench`).
+- sementes (10, fixas — mesmo conjunto da Fase B): 42, 123, 777, 1234, 9999, 2024, 5555, 8080, 271, 63;
+- versões: SEQ, OpenMP@12 threads e OpenACC — os três binários `_bench` (`bin_seq_bench`,
+  `bin_omp_bench`, `bin_acc_sync_bench`) foram generalizados para aceitar o tamanho do sistema como
+  4º parâmetro opcional (`<n_fireflies> <seed> <max_iters> [10|100|200|500]`, default 100 — mantém
+  `run_phase_a.sh`/`run_phase_b.sh` funcionando sem alteração);
+- script: `run_phase_c.sh` (mesmo padrão de manifesto/CSV das Fases A e B), com `--pilot` (só 10 e
+  500 unidades, 1 semente) para validar a hipótese de escala antes da matriz completa (120 execuções).
 
-Objetivo: avaliar escalabilidade em função do número de variáveis do DED.
+Objetivo: avaliar escalabilidade em função do número de variáveis do DED. Diferente da Fase B (custo
+~pop^1,8, quase quadrático, população variando), aqui a população fica fixa em 320 e só o número de
+variáveis cresce — pela estrutura do algoritmo (atração é O(pop²×n_vars); reparo/custo são
+O(pop×n_vars)), a expectativa é crescimento ~linear em n_vars, ainda não confirmado empiricamente.
 
 ### Fase D — Qualidade da solução
 

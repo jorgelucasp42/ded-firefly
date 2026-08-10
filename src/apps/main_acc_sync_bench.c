@@ -1,5 +1,6 @@
 /* main_acc_sync_bench.c — versão OpenACC Sync configurável para benchmark
- * Uso: ./bin/bin_acc_sync_bench <n_fireflies> <seed> <max_iters>
+ * Uso: ./bin/bin_acc_sync_bench <n_fireflies> <seed> <max_iters> [tamanho_sistema]
+ * tamanho_sistema: 10, 100 (default), 200 ou 500 unidades geradoras.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,16 +15,25 @@
 int main(int argc, char **argv) {
     DedData data = {0};
 
-    const char *units_file = "data/units_victoire100.csv";
-    const char *load_file  = "data/load_24h_victoire100.csv";
-
     int      n_fireflies = (argc > 1) ? atoi(argv[1])          : 60;
     unsigned seed        = (argc > 2) ? (unsigned)atoi(argv[2]): (unsigned)time(NULL);
     int      max_iters   = (argc > 3) ? atoi(argv[3])          : 5000;
+    int      system_size = (argc > 4) ? atoi(argv[4])          : 100;
 
     if (n_fireflies <= 0 || max_iters <= 0) {
-        fprintf(stderr, "Uso: %s <n_fireflies> <seed> <max_iters>\n", argv[0]);
+        fprintf(stderr, "Uso: %s <n_fireflies> <seed> <max_iters> [tamanho_sistema]\n", argv[0]);
         return 1;
+    }
+
+    char units_file[64], load_file[64];
+    switch (system_size) {
+        case 10: case 100: case 200: case 500:
+            snprintf(units_file, sizeof(units_file), "data/units_victoire%d.csv", system_size);
+            snprintf(load_file,  sizeof(load_file),  "data/load_24h_victoire%d.csv", system_size);
+            break;
+        default:
+            fprintf(stderr, "Tamanho de sistema invalido: %d (use 10, 100, 200 ou 500)\n", system_size);
+            return 1;
     }
 
     if (ded_load_units(&data, units_file) != 0) {
@@ -45,7 +55,7 @@ int main(int argc, char **argv) {
         .seed        = seed
     };
 
-    printf("BENCH_ACC_SYNC f=%d seed=%u iters=%d\n", n_fireflies, seed, max_iters);
+    printf("BENCH_ACC_SYNC f=%d seed=%u iters=%d sistema=%d\n", n_fireflies, seed, max_iters, system_size);
     fflush(stdout);
 
     double t0 = now_sec();
