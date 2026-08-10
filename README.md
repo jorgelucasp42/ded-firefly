@@ -42,7 +42,7 @@ ded-firefly/
 ├── bench_compare.sh    # Compara SEQ vs OMP vs ACC para uma dada configuração
 ├── grid_search.sh      # Varredura de hiperparâmetros (alpha/gamma) do Firefly
 ├── bench_f*.txt        # Resultados brutos de benchmarks já executados
-├── docs/               # Protocolo de testes e resultados consolidados para o TCC
+├── docs/               # PLANO_TESTES_TCC_DED_FIREFLY.md, protocolo de testes e resultados consolidados para o TCC
 ├── Makefile
 ├── .gitignore
 └── README.md

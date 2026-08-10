@@ -3,7 +3,7 @@
 Estes arquivos não fazem parte do estudo (não entram em nenhuma tabela/figura do TCC) e não têm
 mais alvo no `Makefile`. Ficam aqui só como histórico das abordagens de OpenACC testadas antes de
 se chegar em `firefly_openacc_sync.c`, que é a única versão OpenACC usada no trabalho (ver
-`PLANO_TESTES_TCC_DED_FIREFLY.md`, seção 1).
+`docs/PLANO_TESTES_TCC_DED_FIREFLY.md`, seção 1).
 
 - `firefly_openacc.c` + `main_acc.c` / `main_acc_100.c` / `main_acc_200.c` / `main_acc_500.c` —
   versão "de referência": roda o laço de movimento/reparo em CPU (serial, igual ao SEQ/OpenMP) e só
