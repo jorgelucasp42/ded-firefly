@@ -31,7 +31,7 @@ EQUIV="${OUT_DIR}/seq_omp_equivalence.csv"
 mkdir -p "$LOG_DIR"
 
 echo "== Fase A: compilando binarios =="
-make bench_seq bench_omp bench_acc
+make bench_seq bench_omp bench_acc_sync
 
 extract_field() {
     local field=$1
@@ -99,7 +99,7 @@ for n_fireflies in "${POPS[@]}"; do
             run_version "OMP" "./bin/bin_omp_bench" "$n_fireflies" "$seed" "$iters" "$OMP_THREADS" "$omp_log"
             COSTS["${key}_OMP"]=$(extract_field RESULT_COST "$omp_log")
 
-            run_version "ACC_SYNC" "./bin/bin_acc_bench" "$n_fireflies" "$seed" "$iters" "GPU" "$acc_log"
+            run_version "ACC_SYNC" "./bin/bin_acc_sync_bench" "$n_fireflies" "$seed" "$iters" "GPU" "$acc_log"
             COSTS["${key}_ACC_SYNC"]=$(extract_field RESULT_COST "$acc_log")
 
             seq_cost=${COSTS["${key}_SEQ"]}

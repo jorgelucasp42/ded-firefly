@@ -1,5 +1,5 @@
-/* main_acc_sync_bench.c — versão ACC configurável para benchmark
- * Uso: ./bin/bin_acc_bench <n_fireflies> <seed> <max_iters>
+/* main_acc_sync_bench.c — versão OpenACC Sync configurável para benchmark
+ * Uso: ./bin/bin_acc_sync_bench <n_fireflies> <seed> <max_iters>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
         .seed        = seed
     };
 
-    printf("BENCH_ACC f=%d seed=%u iters=%d\n", n_fireflies, seed, max_iters);
+    printf("BENCH_ACC_SYNC f=%d seed=%u iters=%d\n", n_fireflies, seed, max_iters);
     fflush(stdout);
 
     double t0 = now_sec();
