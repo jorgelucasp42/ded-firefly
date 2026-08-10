@@ -4,6 +4,7 @@
 
 #include "ded_data.h"
 #include "ded_model.h"
+#include "ded_validation.h"
 #include "firefly.h"
 #include "utils.h"
 
@@ -64,6 +65,8 @@ int main(int argc, char **argv) {
     printf("--------------------------------\n");
     printf("Melhor custo encontrado: %.6f\n", best_cost);
     printf("Tempo de execução: %.6f s\n", elapsed);
+    DedValidationReport validation = ded_validate_solution(&data, best);
+    ded_print_validation_report(&data, &validation);
     printf("================================\n\n");
 
     solution_destroy(best);

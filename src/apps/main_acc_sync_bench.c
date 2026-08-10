@@ -7,6 +7,7 @@
 
 #include "ded_data.h"
 #include "ded_model.h"
+#include "ded_validation.h"
 #include "firefly.h"
 #include "utils.h"
 
@@ -53,6 +54,15 @@ int main(int argc, char **argv) {
 
     printf("RESULT_COST=%.10f\n", best_cost);
     printf("RESULT_TIME=%.6f\n",  elapsed);
+    DedValidationReport validation = ded_validate_solution(&data, best);
+    printf("RESULT_VALID_OK=%d\n", ded_validation_is_ok(&validation, 1e-5));
+    printf("RESULT_MAX_BALANCE=%.12f\n", validation.max_balance_abs);
+    printf("RESULT_MAX_PMIN=%.12f\n", validation.max_pmin_violation);
+    printf("RESULT_MAX_PMAX=%.12f\n", validation.max_pmax_violation);
+    printf("RESULT_MAX_RAMP_UP=%.12f\n", validation.max_ramp_up_violation);
+    printf("RESULT_MAX_RAMP_DOWN=%.12f\n", validation.max_ramp_down_violation);
+    printf("RESULT_NAN=%d\n", validation.nan_count);
+    printf("RESULT_INF=%d\n", validation.inf_count);
 
     solution_destroy(best);
     return 0;

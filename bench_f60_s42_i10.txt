@@ -1,0 +1,9 @@
+f=60 seed=42 iters=10 threads=12
+seq_cost=10727851.8562252447  seq_time=0.113300
+omp_cost=10727851.8562252447  omp_time=0.056282
+acc_cost=10685035.2429378144  acc_time=0.078265
+speedup_omp=2.01x  speedup_acc=1.45x
+gap_omp=0.0000%  gap_acc=-0.3991%
+seq_valid=1  seq_max_balance=0.000000000018  seq_max_pmin=0.000000000000  seq_max_pmax=0.000000000000  seq_max_ramp_up=0.000000000000  seq_max_ramp_down=0.000000000000  seq_nan=0  seq_inf=0
+omp_valid=1  omp_max_balance=0.000000000018  omp_max_pmin=0.000000000000  omp_max_pmax=0.000000000000  omp_max_ramp_up=0.000000000000  omp_max_ramp_down=0.000000000000  omp_nan=0  omp_inf=0
+acc_valid=1  acc_max_balance=0.000000000018  acc_max_pmin=0.000000000000  acc_max_pmax=0.000000000000  acc_max_ramp_up=0.000000000000  acc_max_ramp_down=0.000000000000  acc_nan=0  acc_inf=0
