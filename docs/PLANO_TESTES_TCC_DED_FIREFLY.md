@@ -80,7 +80,10 @@ populações-âncora, usado na figura de speedup/eficiência (seção 7, item 5)
 ### Fase C — Escalabilidade pelo tamanho do sistema
 
 - sistemas: 10, 100, 200 e 500 unidades;
-- população principal: 320 (ou valor definido após a Fase B);
+- **população principal: 320** — definido a partir da Fase B (`results/phase_b/20260810_141423/`):
+  o cruzamento CPU↔GPU acontece entre pop=200 (empate: 16,4s OMP@12 vs 16,5s ACC) e pop=240 (GPU já
+  vence: 19,9s vs 25,1s); 320 fica folgadamente do lado favorável à GPU (ACC ~1,34x mais rápido que
+  OMP@12) sem ser o ponto computacionalmente mais caro (480);
 - iterações: 1.000;
 - sementes: no mínimo 10 sementes fixas;
 - versões: SEQ, OpenMP e OpenACC (`bin_acc_sync_bench`).
