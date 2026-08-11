@@ -114,7 +114,7 @@ O(pop×n_vars)), a expectativa é crescimento ~linear em n_vars, ainda não conf
 o pior resultado do `ACC_SYNC` (10.581.929,13) ainda foi melhor que o melhor resultado do SEQ/OMP
 (10.634.880,38) — as distribuições de custo em 30 sementes independentes não se sobrepõem. Gap médio
 de -0,741%, dentro da faixa -0,6% a -0,8% já observada nas Fases B e C. Ver
-`docs/ACHADOS_FASES_A_B_C.md` para o detalhamento (a atualizar com a Fase D).
+`docs/ACHADOS_FASES_A_B_C_D.md` para o detalhamento.
 
 ### Fase E — Desempenho final
 

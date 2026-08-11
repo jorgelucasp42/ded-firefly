@@ -1,6 +1,6 @@
-# Achados e conclusões das Fases A, B e C
+# Achados e conclusões das Fases A, B, C e D
 
-Este documento consolida os principais achados experimentais das Fases A, B e C do plano de testes do projeto `ded-firefly`.
+Este documento consolida os principais achados experimentais das Fases A, B, C e D do plano de testes do projeto `ded-firefly`.
 
 As versões oficiais consideradas no estudo são:
 
@@ -224,14 +224,81 @@ A Fase C confirmou que, uma vez fixada a população em uma região favorável �
 
 O speedup da GPU atingiu o maior valor relativo no sistema de 100 unidades e reduziu levemente em 200 e 500 unidades. Essa redução pode estar associada à maior pressão sobre recursos de memória/cache ou saturação de recursos da GPU, mas os dados não indicam aumento relativo de custo de PCIe.
 
-## Conclusão integrada das Fases A, B e C
+## Fase D — Qualidade da solução
 
-Os resultados das três fases sustentam as seguintes conclusões:
+Arquivo principal:
 
-1. A implementação OpenMP é uma aceleração fiel da versão sequencial, preservando equivalência numérica em todos os testes realizados.
-2. A versão OpenACC síncrona é funcionalmente correta, respeitando as restrições do problema e evitando `NaN`/`Inf`.
+```text
+results/phase_d/20260811_112604/summary.csv
+```
+
+Arquivo de estatísticas:
+
+```text
+results/phase_d/20260811_112604/stats.csv
+```
+
+### Configuração
+
+- População: 320 vagalumes (definida pela Fase B).
+- Sistema: 100 unidades, 24 horas (definido pela Fase C — ponto de maior speedup relativo do
+  OpenACC: 7,26x, contra 7,03x em 200 e 6,60x em 500 unidades).
+- Iterações: 1.000 (consistente com B e C).
+- 30 sementes fixas: 42, 123, 777, 1234, 9999, 2024, 5555, 8080, 271, 63, 11, 17, 29, 53, 101, 202,
+  303, 404, 505, 606, 707, 808, 909, 1111, 2222, 3333, 4444, 6789, 8642, 13579.
+- Versões: `SEQ`, `OMP@12` e `ACC_SYNC`.
+- Total: 90 execuções.
+
+### Achados de corretude
+
+- 90/90 execuções válidas.
+- Nenhuma ocorrência de `NaN` ou `Inf`.
+- Nenhuma violação de `Pmin`, `Pmax`, `UR` ou `DR`.
+- Taxa de factibilidade: 100% (30/30) em todas as versões.
+
+### Estatísticas de custo (30 sementes independentes)
+
+| Versão | Melhor | Pior | Média | Mediana | Desvio-padrão | CV |
+|---|---:|---:|---:|---:|---:|---:|
+| SEQ / OMP | 10.634.880,38 | 10.676.747,09 | 10.645.999,74 | 10.644.466,57 | 8.630,13 | 0,0811% |
+| `ACC_SYNC` | 10.553.427,70 | 10.581.929,13 | 10.567.085,38 | 10.565.200,62 | 7.736,49 | 0,0732% |
+
+`SEQ` e `OMP` produziram estatísticas idênticas (esperado, dado a equivalência numérica exata entre
+as duas versões). Gaps do `ACC_SYNC` em relação a `SEQ`/`OMP`: **-0,74%** na média, **-0,77%** no
+melhor caso, **-0,74%** na mediana — consistente com a faixa (-0,6% a -0,8%) já observada nas Fases
+B e C, agora confirmada com uma amostra estatisticamente robusta de 30 sementes.
+
+**Achado forte**: o **pior** resultado do `ACC_SYNC` (10.581.929,13) ainda foi **melhor** que o
+**melhor** resultado do `SEQ`/`OMP` (10.634.880,38) — margem de 52.951 no custo. Em 30 sementes
+independentes, as distribuições de custo das duas variantes **não se sobrepõem**: toda execução do
+`ACC_SYNC` superou toda execução do `SEQ`/`OMP`.
+
+### Nota metodológica: variância não é confiável com poucas amostras
+
+O piloto desta fase (3 sementes) sugeria que o `ACC_SYNC` fosse ~7x mais variável que `SEQ`/`OMP`
+(CV 0,0558% vs 0,0080%). Com as 30 sementes completas, essa relação **se inverteu**: o `ACC_SYNC`
+teve CV **menor** (0,0732% vs 0,0811%) — ligeiramente mais consistente, não menos. Isso ilustra por
+que a Fase D exige 30 sementes em vez de poucas: estimativas de dispersão com `n` pequeno podem levar
+a conclusões erradas sobre qual versão é mais estável.
+
+### Conclusão
+
+A Fase D confirmou, com base estatística robusta, o que as Fases B e C já vinham sinalizando: o
+`ACC_SYNC` não é apenas mais rápido na configuração escolhida (população 320, sistema 100 unidades)
+— ele também encontra soluções sistematicamente melhores, com distribuições de custo que não se
+sobrepõem às de `SEQ`/`OMP` em 30 execuções independentes. Isso reforça a decisão metodológica de
+tratar o `ACC_SYNC` como variante algorítmica distinta (seção 1 do plano de testes): a diferença de
+qualidade é real, estável e mensurável, não um efeito de amostragem pequena.
+
+## Conclusão integrada das Fases A, B, C e D
+
+Os resultados das quatro fases sustentam as seguintes conclusões:
+
+1. A implementação OpenMP é uma aceleração fiel da versão sequencial, preservando equivalência numérica em todos os testes realizados (12/12 na Fase A, 91/91 na Fase B, 40/40 na Fase C, 30/30 na Fase D).
+2. A versão OpenACC síncrona é funcionalmente correta, respeitando as restrições do problema e evitando `NaN`/`Inf` em todas as 415 execuções realizadas nas quatro fases (36 + 169 + 120 + 90).
 3. A GPU precisa de carga computacional suficiente para compensar seus overheads. Esse ponto foi observado na Fase B entre 200 e 240 vagalumes, consistente nas 5 sementes testadas em ambas as populações. O próprio OpenMP tem teto de escalabilidade baixo (eficiência ≤ ~44% em 12 threads), o que também contribui para a GPU vencer a partir desse ponto.
 4. Com população fixada acima do ponto de cruzamento, a GPU supera o OpenMP em todos os tamanhos de sistema da Fase C.
-5. A qualidade da solução do `ACC_SYNC` foi sistematicamente competitiva, frequentemente com custo médio menor que `SEQ`/`OMP`, embora o gap diminua em sistemas maiores.
+5. A qualidade da solução do `ACC_SYNC` foi sistematicamente competitiva, frequentemente com custo médio menor que `SEQ`/`OMP`, embora o gap diminua em sistemas maiores (Fase C).
+6. Com uma amostra estatisticamente robusta (Fase D, 30 sementes), a vantagem de qualidade do `ACC_SYNC` deixou de ser só uma tendência média: as distribuições de custo de `ACC_SYNC` e `SEQ`/`OMP` **não se sobrepõem** — toda execução do `ACC_SYNC` superou toda execução do `SEQ`/`OMP` na configuração escolhida (população 320, sistema 100 unidades).
 
-Assim, as Fases A, B e C fornecem uma base consistente para as próximas etapas do estudo: análise estatística de qualidade da solução e medições finais de desempenho com repetição controlada.
+Assim, as Fases A, B, C e D fornecem uma base consistente para a etapa final do estudo: medições de desempenho com repetição controlada, aquecimento e speedup/eficiência formais (Fase E).
