@@ -100,11 +100,21 @@ O(pop×n_vars)), a expectativa é crescimento ~linear em n_vars, ainda não conf
 
 ### Fase D — Qualidade da solução
 
-- configuração escolhida nas fases anteriores;
-- 30 sementes independentes;
-- registrar melhor custo, média, mediana, desvio-padrão, pior custo e coeficiente de variação;
-- registrar taxa de soluções factíveis;
-- comparar distribuições, não apenas a melhor execução.
+- **configuração**: população 320 (Fase B) e sistema de 100 unidades (Fase C mostrou ser o ponto de
+  maior speedup relativo do OpenACC — 7,26x, contra 7,03x em 200 e 6,60x em 500 unidades), 1.000
+  iterações (consistente com B e C);
+- 30 sementes fixas: 42, 123, 777, 1234, 9999, 2024, 5555, 8080, 271, 63, 11, 17, 29, 53, 101, 202,
+  303, 404, 505, 606, 707, 808, 909, 1111, 2222, 3333, 4444, 6789, 8642, 13579;
+- versões: SEQ, OpenMP@12 threads e OpenACC (`bin_acc_sync_bench`);
+- script: `run_phase_d.sh` (mesmo padrão de manifesto/CSV das fases anteriores), com `--pilot`
+  (3 sementes) e cálculo automático de `stats.csv` (melhor custo, pior custo, média, mediana,
+  desvio-padrão, coeficiente de variação e taxa de factibilidade por versão).
+
+**Resultado** (`results/phase_d/20260811_112604/`, 90/90 execuções válidas, 100% de factibilidade):
+o pior resultado do `ACC_SYNC` (10.581.929,13) ainda foi melhor que o melhor resultado do SEQ/OMP
+(10.634.880,38) — as distribuições de custo em 30 sementes independentes não se sobrepõem. Gap médio
+de -0,741%, dentro da faixa -0,6% a -0,8% já observada nas Fases B e C. Ver
+`docs/ACHADOS_FASES_A_B_C.md` para o detalhamento (a atualizar com a Fase D).
 
 ### Fase E — Desempenho final
 
