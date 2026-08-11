@@ -1,0 +1,27 @@
+BENCH_ACC_SYNC f=320 seed=9999 iters=1000 sistema=500
+iter=500 best_cost=53410718.4954003021
+iter=1000 best_cost=53363609.1866097376
+
+=== Perfil de tempo — bin_acc_sync (1000 iters, 320 vagalumes) ===
+  (c) CPU (noise+trial+best):         3.261 s  (  1.9%)
+  (b) Transferencias PCIe:            4.992 s  (  2.9%)
+  (a) Kernels GPU (mov+rep+custo):  162.768 s  ( 95.2%)
+  ---
+  Total loop medido:              171.020 s
+=============================================================
+
+RESULT_COST=53363609.1866097376
+RESULT_TIME=171.340821
+RESULT_ALPHA=0.250000
+RESULT_BETA0=1.000000
+RESULT_GAMMA=3e-07
+RESULT_N_UNITS=500
+RESULT_N_HOURS=24
+RESULT_VALID_OK=1
+RESULT_MAX_BALANCE=0.000000000247
+RESULT_MAX_PMIN=0.000000000000
+RESULT_MAX_PMAX=0.000000000000
+RESULT_MAX_RAMP_UP=0.000000000000
+RESULT_MAX_RAMP_DOWN=0.000000000000
+RESULT_NAN=0
+RESULT_INF=0
