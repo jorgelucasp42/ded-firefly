@@ -128,6 +128,9 @@ static double run_firefly_core(const DedData *data,
     size_t n_vars   = total_vars(data);
     size_t pop_size = (size_t)n * n_vars;
 
+    int log_interval = 500;
+    { const char *e = getenv("FIREFLY_LOG_INTERVAL"); if (e) { int v = atoi(e); if (v > 0) log_interval = v; } }
+
     double *pop_old  = (double *)calloc(pop_size, sizeof(double));
     double *pop_new  = (double *)calloc(pop_size, sizeof(double));
     double *cost_old = (double *)calloc((size_t)n, sizeof(double));
@@ -381,7 +384,7 @@ static double run_firefly_core(const DedData *data,
                 memcpy(best->P, &pop_new[base_best], n_vars * sizeof(double));
             }
 
-            if ((iter + 1) % 500 == 0)
+            if ((iter + 1) % log_interval == 0)
                 printf("iter=%d best_cost=%.10f\n", iter + 1, best_cost);
 
             /* ── Propaga cost_new → cost_old no device ────────────── */

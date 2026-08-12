@@ -46,6 +46,9 @@ static double run_firefly_core(const DedData *data,
     int n = params->n_fireflies;
     size_t n_vars = (size_t)data->n_units * (size_t)data->n_hours;
 
+    int log_interval = 500;
+    { const char *e = getenv("FIREFLY_LOG_INTERVAL"); if (e) { int v = atoi(e); if (v > 0) log_interval = v; } }
+
     // double-buffer
     Solution **popA = (Solution **)calloc((size_t)n, sizeof(Solution *));
     Solution **popB = (Solution **)calloc((size_t)n, sizeof(Solution *));
@@ -193,7 +196,7 @@ static double run_firefly_core(const DedData *data,
             }
         }
 
-        if ((iter + 1) % 500 == 0) {
+        if ((iter + 1) % log_interval == 0) {
             printf("iter=%d best_cost=%.10f\n", iter + 1, best_cost);
         }
 
