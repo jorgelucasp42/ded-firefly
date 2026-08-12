@@ -118,11 +118,36 @@ de -0,741%, dentro da faixa -0,6% a -0,8% já observada nas Fases B e C. Ver
 
 ### Fase E — Desempenho final
 
-- realizar 1 execução de aquecimento que não entra nas estatísticas;
-- realizar pelo menos 10 repetições cronometradas por configuração;
-- reportar mediana do tempo e intervalo interquartil; média e desvio-padrão podem ser apresentados como complemento;
-- calcular speedup `T_seq/T_par` e eficiência OpenMP `speedup/n_threads`;
-- separar, no OpenACC, tempo total, kernels, transferências e processamento na CPU.
+**Opção B adotada**: em vez de repetir o sweep inteiro de populações/sistemas das Fases B e C com
+aquecimento + 10 repetições (custo proibitivo), a Fase E foca na **configuração final única** já
+usada na Fase D (população 320, sistema 100 unidades, 1.000 iterações) — permite reportar
+desempenho e qualidade juntos para o mesmo ponto.
+
+- semente fixa (42, mesmo problema repetido — aqui o objetivo é medir ruído de sistema no tempo,
+  não variância do algoritmo, que já é papel da Fase D);
+- 7 versões: SEQ, OpenMP com 1/2/4/8/12 threads, OpenACC (`bin_acc_sync_bench`);
+- 1 execução de aquecimento descartada + 10 repetições cronometradas por versão;
+- script: `run_phase_e.sh` (mesmo padrão de manifesto/CSV), com `--pilot` (3 repetições) e `stats.csv`
+  calculando mediana, IQR, média, desvio-padrão, speedup (`T_seq/T_par`), eficiência OpenMP
+  (`speedup/threads`) e — para o OpenACC — o breakdown de tempo em kernel/PCIe/CPU.
+
+**Resultado** (`results/phase_e/20260811_162003/`, 70/70 execuções válidas, custo idêntico em todas
+as repetições de cada versão — confirma que a variação é só de tempo, por ruído de sistema):
+
+| Versão | Threads | Mediana | Speedup | Eficiência |
+|---|---:|---:|---:|---:|
+| SEQ | 1 | 214,84 s | 1,00x | — |
+| OMP | 1 | 217,31 s | 0,99x | 98,9% |
+| OMP | 2 | 112,48 s | 1,91x | 95,5% |
+| OMP | 4 | 62,90 s | 3,42x | 85,4% |
+| OMP | 8 | 51,63 s | 4,16x | 52,0% |
+| OMP | 12 | 42,19 s | 5,09x | 42,4% |
+| `ACC_SYNC` | GPU | 29,82 s | **7,21x** | — |
+
+Breakdown do `ACC_SYNC`: kernel GPU 27,84s (93,4% do tempo — bate quase exatamente com os 93,04%
+medidos na Fase C para o mesmo tamanho de sistema), PCIe 1,38s, CPU 0,49s. A eficiência do OpenMP
+degrada de 98,9% (1 thread) para 42,4% (12 threads), confirmando o teto de escalabilidade já visto
+na Fase B. Ver `docs/ACHADOS_FASES_A_B_C_D.md` (a atualizar com a Fase E).
 
 ## 4. Condições de execução
 
