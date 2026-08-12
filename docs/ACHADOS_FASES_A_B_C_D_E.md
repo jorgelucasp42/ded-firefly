@@ -1,6 +1,6 @@
-# Achados e conclusões das Fases A, B, C e D
+# Achados e conclusões das Fases A, B, C, D e E
 
-Este documento consolida os principais achados experimentais das Fases A, B, C e D do plano de testes do projeto `ded-firefly`.
+Este documento consolida os principais achados experimentais das Fases A, B, C, D e E do plano de testes do projeto `ded-firefly`.
 
 As versões oficiais consideradas no estudo são:
 
@@ -290,15 +290,95 @@ sobrepõem às de `SEQ`/`OMP` em 30 execuções independentes. Isso reforça a d
 tratar o `ACC_SYNC` como variante algorítmica distinta (seção 1 do plano de testes): a diferença de
 qualidade é real, estável e mensurável, não um efeito de amostragem pequena.
 
-## Conclusão integrada das Fases A, B, C e D
+## Fase E — Desempenho final
 
-Os resultados das quatro fases sustentam as seguintes conclusões:
+Arquivo principal:
 
-1. A implementação OpenMP é uma aceleração fiel da versão sequencial, preservando equivalência numérica em todos os testes realizados (12/12 na Fase A, 91/91 na Fase B, 40/40 na Fase C, 30/30 na Fase D).
-2. A versão OpenACC síncrona é funcionalmente correta, respeitando as restrições do problema e evitando `NaN`/`Inf` em todas as 415 execuções realizadas nas quatro fases (36 + 169 + 120 + 90).
-3. A GPU precisa de carga computacional suficiente para compensar seus overheads. Esse ponto foi observado na Fase B entre 200 e 240 vagalumes, consistente nas 5 sementes testadas em ambas as populações. O próprio OpenMP tem teto de escalabilidade baixo (eficiência ≤ ~44% em 12 threads), o que também contribui para a GPU vencer a partir desse ponto.
-4. Com população fixada acima do ponto de cruzamento, a GPU supera o OpenMP em todos os tamanhos de sistema da Fase C.
+```text
+results/phase_e/20260811_162003/summary.csv
+```
+
+Arquivo de estatísticas:
+
+```text
+results/phase_e/20260811_162003/stats.csv
+```
+
+### Configuração
+
+Diferente das Fases B e C (varredura de população/sistema) e da Fase D (30 sementes independentes),
+a Fase E foca numa **configuração única** — a mesma da Fase D — para reportar desempenho com rigor
+estatístico em vez de repetir o sweep inteiro das fases anteriores com aquecimento e repetição
+(custo proibitivo: só a Fase B, com 1 execução por ponto, já levou 3,3h):
+
+- População: 320 vagalumes; sistema: 100 unidades; iterações: 1.000.
+- Semente fixa: 42 (mesmo problema repetido — aqui o objetivo é medir ruído de sistema no tempo, não
+  variância do algoritmo, papel já cumprido pela Fase D).
+- 7 versões: `SEQ`, `OMP` com 1/2/4/8/12 threads, `ACC_SYNC`.
+- Por versão: 1 execução de aquecimento (descartada) + 10 repetições cronometradas.
+- Total: 70 execuções cronometradas (mais 7 de aquecimento, não contabilizadas nas estatísticas).
+
+### Achados de corretude
+
+- 70/70 execuções válidas.
+- Nenhuma ocorrência de `NaN` ou `Inf`.
+- Custo **idêntico** em todas as repetições de cada versão (mesma semente ⇒ mesmo resultado) —
+  confirma que a variação observada é só de tempo, por ruído de sistema, não do algoritmo.
+
+### Desempenho final: mediana, IQR, speedup e eficiência
+
+| Versão | Threads | Mediana | IQR | Speedup vs SEQ | Eficiência OpenMP |
+|---|---:|---:|---:|---:|---:|
+| SEQ | 1 | 214,84 s | 0,317 s | 1,00x | — |
+| OMP | 1 | 217,31 s | 0,275 s | 0,99x | 98,9% |
+| OMP | 2 | 112,48 s | 0,735 s | 1,91x | 95,5% |
+| OMP | 4 | 62,90 s | 0,055 s | 3,42x | 85,4% |
+| OMP | 8 | 51,63 s | 0,224 s | 4,16x | 52,0% |
+| OMP | 12 | 42,19 s | 0,142 s | 5,09x | 42,4% |
+| `ACC_SYNC` | GPU | 29,82 s | 0,287 s | **7,21x** | — |
+
+Os IQRs são pequenos em todas as configurações (a maior, OMP@2, tem IQR de 0,735s sobre uma mediana
+de 112,48s — menos de 1% de dispersão), evidência de baixo ruído de sistema na máquina de teste e de
+que 10 repetições foram suficientes para uma medição estável.
+
+A eficiência do OpenMP degrada continuamente de 98,9% (1 thread, praticamente sem overhead de
+paralelização) até 42,4% (12 threads) — confirma, agora com rigor estatístico, o teto de
+escalabilidade já sinalizado pelo sweep de threads da Fase B (que chegou a ~44% de eficiência em 12
+threads nas populações-âncora).
+
+### Breakdown de tempo do OpenACC
+
+| Componente | Tempo (mediana) | % do total |
+|---|---:|---:|
+| Kernel GPU | 27,84 s | 93,4% |
+| Transferências PCIe | 1,38 s | 4,6% |
+| Processamento CPU (ruído + trial + melhor) | 0,49 s | 1,6% |
+
+A fração de tempo em kernel (93,4%) bate quase exatamente com o valor medido pela Fase C para o
+mesmo tamanho de sistema (93,04% em 100 unidades) — boa validação cruzada entre fases independentes,
+usando metodologias de medição diferentes (execução única na Fase C vs. mediana de 10 repetições
+com aquecimento na Fase E).
+
+### Conclusão
+
+A Fase E confirma, com o rigor metodológico que faltava nas fases anteriores (aquecimento,
+repetição, mediana/IQR em vez de execução única), os números de desempenho já sinalizados por B, C
+e D: o `ACC_SYNC` entrega **7,21x de speedup** sobre o `SEQ` na configuração escolhida, superando o
+melhor caso do OpenMP (5,09x com 12 threads, a apenas 42,4% de eficiência). A baixa dispersão entre
+repetições (IQRs pequenos, custo idêntico) indica que os números reportados nas fases anteriores —
+medidos com execução única — já eram confiáveis, mas agora estão formalmente validados com a
+metodologia que o plano de testes exige para a etapa final.
+
+## Conclusão integrada das Fases A, B, C, D e E
+
+Os resultados das cinco fases sustentam as seguintes conclusões:
+
+1. A implementação OpenMP é uma aceleração fiel da versão sequencial, preservando equivalência numérica em todos os testes realizados (12/12 na Fase A, 91/91 na Fase B, 40/40 na Fase C, 30/30 na Fase D — e custo idêntico em todas as repetições da Fase E).
+2. A versão OpenACC síncrona é funcionalmente correta, respeitando as restrições do problema e evitando `NaN`/`Inf` em todas as 485 execuções realizadas nas cinco fases (36 + 169 + 120 + 90 + 70).
+3. A GPU precisa de carga computacional suficiente para compensar seus overheads. Esse ponto foi observado na Fase B entre 200 e 240 vagalumes, consistente nas 5 sementes testadas em ambas as populações. O próprio OpenMP tem teto de escalabilidade baixo — eficiência ≤ ~44% em 12 threads na Fase B, confirmado com rigor estatístico na Fase E (42,4% de eficiência, degradando continuamente desde 98,9% em 1 thread) — o que também contribui para a GPU vencer a partir desse ponto.
+4. Com população fixada acima do ponto de cruzamento, a GPU supera o OpenMP em todos os tamanhos de sistema da Fase C, e na configuração final (Fase E) entrega 7,21x de speedup sobre o SEQ, contra 5,09x do melhor caso OpenMP.
 5. A qualidade da solução do `ACC_SYNC` foi sistematicamente competitiva, frequentemente com custo médio menor que `SEQ`/`OMP`, embora o gap diminua em sistemas maiores (Fase C).
 6. Com uma amostra estatisticamente robusta (Fase D, 30 sementes), a vantagem de qualidade do `ACC_SYNC` deixou de ser só uma tendência média: as distribuições de custo de `ACC_SYNC` e `SEQ`/`OMP` **não se sobrepõem** — toda execução do `ACC_SYNC` superou toda execução do `SEQ`/`OMP` na configuração escolhida (população 320, sistema 100 unidades).
+7. O perfil de tempo do `ACC_SYNC` medido com rigor na Fase E (93,4% em kernel GPU) confirma, de forma independente, a mesma fração medida pela Fase C para o mesmo tamanho de sistema (93,04%) — evidência de que os números de execução única das fases anteriores já eram confiáveis.
 
-Assim, as Fases A, B, C e D fornecem uma base consistente para a etapa final do estudo: medições de desempenho com repetição controlada, aquecimento e speedup/eficiência formais (Fase E).
+Assim, as Fases A, B, C, D e E fecham o plano de testes do projeto: correção e reprodutibilidade (A), escalabilidade por população (B) e por tamanho do sistema (C), qualidade estatística da solução (D) e desempenho final com rigor metodológico (E) — todas convergindo para a mesma conclusão central: o `ACC_SYNC`, tratado como variante algorítmica distinta desde o início (seção 1 do plano de testes), entrega desempenho superior sem sacrificar corretude ou qualidade da solução, na configuração de população 320 e sistema de 100 unidades.

@@ -114,7 +114,7 @@ O(pop×n_vars)), a expectativa é crescimento ~linear em n_vars, ainda não conf
 o pior resultado do `ACC_SYNC` (10.581.929,13) ainda foi melhor que o melhor resultado do SEQ/OMP
 (10.634.880,38) — as distribuições de custo em 30 sementes independentes não se sobrepõem. Gap médio
 de -0,741%, dentro da faixa -0,6% a -0,8% já observada nas Fases B e C. Ver
-`docs/ACHADOS_FASES_A_B_C_D.md` para o detalhamento.
+`docs/ACHADOS_FASES_A_B_C_D_E.md` para o detalhamento.
 
 ### Fase E — Desempenho final
 
@@ -147,7 +147,7 @@ as repetições de cada versão — confirma que a variação é só de tempo, p
 Breakdown do `ACC_SYNC`: kernel GPU 27,84s (93,4% do tempo — bate quase exatamente com os 93,04%
 medidos na Fase C para o mesmo tamanho de sistema), PCIe 1,38s, CPU 0,49s. A eficiência do OpenMP
 degrada de 98,9% (1 thread) para 42,4% (12 threads), confirmando o teto de escalabilidade já visto
-na Fase B. Ver `docs/ACHADOS_FASES_A_B_C_D.md` (a atualizar com a Fase E).
+na Fase B. Ver `docs/ACHADOS_FASES_A_B_C_D_E.md`.
 
 ## 4. Condições de execução
 
