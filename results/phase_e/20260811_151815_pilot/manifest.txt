@@ -1,0 +1,19 @@
+data_hora=2026-08-11T15:18:17-03:00
+commit=ec9db5a
+so_kernel=Linux jorge-LOQ 6.8.0-136-generic #136-Ubuntu SMP PREEMPT_DYNAMIC Wed Jul  1 21:53:05 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+cpu_modelo=12th Gen Intel(R) Core(TM) i5-12450HX
+cpu_nucleos_fisicos=8
+cpu_threads_logicos=12
+gpu_modelo=NVIDIA GeForce RTX 3050 6GB Laptop GPU
+gpu_memoria=6144 MiB
+gpu_driver=595.84
+ram_total=7.5Gi
+gcc_versao=gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+nvc_versao=nvc 25.11-0 64-bit target on x86-64 Linux -tp alderlake 
+cflags=CFLAGS=-O3 -Wall -Wextra -std=c11
+acc_flags=ACC_FLAGS ?= -O3 -acc -Minfo=accel
+load_average=0,82, 1,03, 1,14
+modo_piloto=1
+n_repeticoes=3
+semente_fixa=42
+# estado energetico e processos concorrentes: preencher manualmente se relevante
