@@ -1,0 +1,806 @@
+<title>DED · Firefly · SEQ vs OpenMP vs OpenACC — Relatório de Resultados</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:      #f4f5f3;
+    --surface:    #fcfcfb;
+    --surface-2:  #eef0ed;
+    --ink:        #0b0b0b;
+    --ink-2:      #52514e;
+    --ink-3:      #898781;
+    --border:     rgba(11,11,11,0.10);
+    --border-2:   rgba(11,11,11,0.16);
+    --grid:       #e1e0d9;
+    --axis:       #c3c2b7;
+    --accent:     #eb6834;   /* ACC_SYNC / GPU */
+    --accent-ink: #a8431a;
+    --series-omp: #2a78d6;   /* OpenMP / CPU */
+    --series-seq: #898781;   /* SEQ baseline, muted */
+    --good:       #006300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper:      #0d0f0e;
+      --surface:    #1a1a19;
+      --surface-2:  #232322;
+      --ink:        #ffffff;
+      --ink-2:      #c3c2b7;
+      --ink-3:      #8f8d86;
+      --border:     rgba(255,255,255,0.10);
+      --border-2:   rgba(255,255,255,0.18);
+      --grid:       #2c2c2a;
+      --axis:       #3a3a37;
+      --accent:     #d95926;
+      --accent-ink: #f4a27f;
+      --series-omp: #3987e5;
+      --series-seq: #898781;
+      --good:       #0ca30c;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper:      #0d0f0e;
+    --surface:    #1a1a19;
+    --surface-2:  #232322;
+    --ink:        #ffffff;
+    --ink-2:      #c3c2b7;
+    --ink-3:      #8f8d86;
+    --border:     rgba(255,255,255,0.10);
+    --border-2:   rgba(255,255,255,0.18);
+    --grid:       #2c2c2a;
+    --axis:       #3a3a37;
+    --accent:     #d95926;
+    --accent-ink: #f4a27f;
+    --series-omp: #3987e5;
+    --series-seq: #898781;
+    --good:       #0ca30c;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, var(--border) 27px, var(--border) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, var(--border) 27px, var(--border) 28px);
+    background-attachment: local;
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, "Liberation Mono", monospace;
+  }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+
+  /* ---------- header ---------- */
+  header.hero {
+    border: 1px solid var(--border-2);
+    background: var(--surface);
+    padding: 28px 28px 24px;
+    margin-bottom: 40px;
+  }
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    font-size: clamp(22px, 3.4vw, 30px);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 10px;
+    line-height: 1.25;
+  }
+  .hero-sub {
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0 0 22px;
+    font-size: 15px;
+  }
+  .stat-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  .stat-tile {
+    background: var(--surface);
+    padding: 14px 14px;
+  }
+  .stat-value {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    font-size: 22px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent-ink);
+  }
+  .stat-label {
+    font-size: 11.5px;
+    color: var(--ink-3);
+    margin-top: 4px;
+    letter-spacing: 0.02em;
+  }
+
+  /* ---------- sections ---------- */
+  section.report {
+    margin-bottom: 44px;
+  }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    border-bottom: 1px solid var(--border-2);
+    padding-bottom: 8px;
+    margin-bottom: 18px;
+  }
+  .sec-num {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+  .sec-title {
+    font-size: 18px;
+    font-weight: 650;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .sec-tag {
+    margin-left: auto;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+  p.lede { color: var(--ink-2); max-width: 68ch; margin: 0 0 16px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .finding {
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    padding: 12px 16px;
+    margin-top: 14px;
+    font-size: 14.5px;
+    color: var(--ink-2);
+  }
+  .finding b { color: var(--ink); }
+  .finding.blue { border-left-color: var(--series-omp); }
+
+  /* ---------- spec sheet tables ---------- */
+  table.spec {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  table.spec th, table.spec td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.spec th {
+    color: var(--ink-3);
+    font-weight: 500;
+    width: 40%;
+  }
+  table.spec td { font-variant-numeric: tabular-nums; }
+  .spec-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  .spec-grid > div { background: var(--surface); padding: 16px 18px; }
+  .spec-grid h4 {
+    font-family: ui-monospace, monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 10px;
+  }
+
+  /* ---------- charts ---------- */
+  .chart-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 16px 8px;
+  }
+  .chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .gridline { stroke: var(--grid); stroke-width: 1; }
+  .axis-line { stroke: var(--axis); stroke-width: 1; }
+  .axis-label { font-size: 10.5px; fill: var(--ink-3); font-family: ui-monospace, monospace; }
+  .axis-title { font-size: 11px; fill: var(--ink-2); font-family: ui-monospace, monospace; letter-spacing: 0.03em; }
+  .crosshair { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 2 3; pointer-events: none; }
+  .legend-row { display: flex; gap: 18px; flex-wrap: wrap; padding: 10px 4px 4px; font-size: 12.5px; color: var(--ink-2); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: ui-monospace, monospace;
+    font-size: 11.5px;
+    padding: 7px 10px;
+    border-radius: 3px;
+    line-height: 1.5;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 80ms ease;
+    z-index: 5;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  }
+  .chart-frame { position: relative; }
+
+  /* small-multiple bars */
+  .bar-seg { cursor: default; }
+  .bar-label { font-size: 10.5px; fill: var(--ink-2); font-family: ui-monospace, monospace; }
+
+  footer.report-footer {
+    margin-top: 56px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border-2);
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: ui-monospace, monospace;
+  }
+
+  @media (max-width: 640px) {
+    .stat-strip { grid-template-columns: repeat(2, 1fr); }
+    .spec-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="hero">
+    <p class="eyebrow">ded-firefly · relatório de resultados · fases A–E</p>
+    <h1>Despacho Econômico Dinâmico via Firefly Algorithm — SEQ, OpenMP e OpenACC sob teste</h1>
+    <p class="hero-sub">Consolidação visual dos experimentos das cinco fases do plano de testes: correção, escalabilidade por população e por tamanho do sistema, qualidade estatística da solução e desempenho final medido com rigor metodológico.</p>
+    <div class="stat-strip">
+      <div class="stat-tile"><div class="stat-value tnum">485</div><div class="stat-label">execuções válidas (A–D)</div></div>
+      <div class="stat-tile"><div class="stat-value tnum">7,21×</div><div class="stat-label">speedup final OpenACC</div></div>
+      <div class="stat-tile"><div class="stat-value tnum">200–240</div><div class="stat-label">vagalumes no cruzamento CPU/GPU</div></div>
+      <div class="stat-tile"><div class="stat-value tnum">−0,74%</div><div class="stat-label">gap de custo médio (Fase D)</div></div>
+    </div>
+  </header>
+
+  <section class="report">
+    <div class="sec-head">
+      <span class="sec-num mono">§01</span>
+      <h2 class="sec-title">Ambiente e configuração</h2>
+      <span class="sec-tag">manifest.txt · todas as fases</span>
+    </div>
+    <div class="spec-grid">
+      <div>
+        <h4>Máquina de teste</h4>
+        <table class="spec">
+          <tr><th>CPU</th><td>Intel Core i5-12450HX — 8 núcleos / 12 threads</td></tr>
+          <tr><th>GPU</th><td>NVIDIA RTX 3050 6GB Laptop — driver 595.84</td></tr>
+          <tr><th>Compiladores</th><td>gcc 13.3.0 · nvc 25.11-0</td></tr>
+          <tr><th>Flags</th><td>-O3 (CPU) · -O3 -acc -Minfo=accel (GPU)</td></tr>
+        </table>
+      </div>
+      <div>
+        <h4>Parâmetros do Firefly</h4>
+        <table class="spec">
+          <tr><th>α / β₀ / γ</th><td>0,25 / 1,00 / 3×10⁻⁷</td></tr>
+          <tr><th>Critério de parada</th><td>1.000 iterações (fixo)</td></tr>
+          <tr><th>Config. de produção</th><td>pop=320 · sistema=100 unidades</td></tr>
+          <tr><th>Versão GPU oficial</th><td>ACC_SYNC (firefly_openacc_sync.c)</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="report">
+    <div class="sec-head">
+      <span class="sec-num mono">§02</span>
+      <h2 class="sec-title">Validação e equivalência</h2>
+      <span class="sec-tag">fases A–E</span>
+    </div>
+    <p class="lede">Todas as 485 execuções das Fases A–D (mais as 70 repetições cronometradas da Fase E) respeitaram balanço de potência, limites Pmin/Pmax e rampas, sem nenhuma ocorrência de NaN/Inf. SEQ e OpenMP produziram custo numericamente idêntico em <b>173 comparações diretas</b> (12 + 91 + 40 + 30), confirmando que a paralelização com threads preserva a trajetória exata do algoritmo sequencial.</p>
+  </section>
+
+  <section class="report">
+    <div class="sec-head">
+      <span class="sec-num mono">§03</span>
+      <h2 class="sec-title">Escalabilidade por população</h2>
+      <span class="sec-tag">Fase B · 169 execuções</span>
+    </div>
+    <p class="lede">Tempo médio por versão em função do tamanho do enxame (sistema fixo de 100 unidades, 1.000 iterações). O eixo de tempo está em escala logarítmica — a inclinação quase reta do SEQ evidencia o crescimento quase quadrático já esperado da estrutura do algoritmo.</p>
+    <div class="chart-frame">
+      <div class="chart-wrap"><div id="chart-b-time"></div></div>
+      <div class="tooltip" id="tt-b-time"></div>
+    </div>
+    <div class="finding"><b>Cruzamento entre 200 e 240 vagalumes:</b> em pop=200, OpenMP@12 (16,43s) e ACC_SYNC (16,46s) praticamente empatam; em pop=240 a GPU já abre vantagem (19,91s vs 25,15s) — consistente nas 5 sementes testadas em cada ponto.</div>
+
+    <p class="lede" style="margin-top:28px;">Eficiência do OpenMP por número de threads, medida nas três populações-âncora (menor / meio / maior):</p>
+    <div class="chart-frame">
+      <div class="chart-wrap"><div id="chart-b-threads"></div></div>
+      <div class="tooltip" id="tt-b-threads"></div>
+    </div>
+    <div class="finding blue"><b>Teto de escalabilidade do OpenMP:</b> a eficiência nunca ultrapassa ~44% em 12 threads. Em população pequena (60), o ponto ótimo de tempo absoluto é <b>4 threads</b>, não 12 — usar mais threads ali piora o tempo.</div>
+  </section>
+
+  <section class="report">
+    <div class="sec-head">
+      <span class="sec-num mono">§04</span>
+      <h2 class="sec-title">Escalabilidade por tamanho do sistema</h2>
+      <span class="sec-tag">Fase C · 120 execuções</span>
+    </div>
+    <p class="lede">População fixa em 320 (região favorável à GPU), variando o número de unidades geradoras — ou seja, o número de variáveis de decisão do DED. Escala logarítmica em ambos os eixos.</p>
+    <div class="chart-frame">
+      <div class="chart-wrap"><div id="chart-c-time"></div></div>
+      <div class="tooltip" id="tt-c-time"></div>
+    </div>
+    <div class="finding"><b>A GPU vence em todos os tamanhos testados</b> — de 10 a 500 unidades — porque a população já está do lado favorável do cruzamento da Fase B. A escala é quase linear no número de variáveis (bem mais previsível que a escala quase quadrática por população).</div>
+  </section>
+
+  <section class="report">
+    <div class="sec-head">
+      <span class="sec-num mono">§05</span>
+      <h2 class="sec-title">Qualidade da solução</h2>
+      <span class="sec-tag">Fase D · 30 sementes independentes</span>
+    </div>
+    <p class="lede">Distribuição de custo final por semente, na configuração de produção (pop=320, sistema=100 unidades, 1.000 iterações). Cada ponto é uma execução independente; o traço horizontal marca a mediana.</p>
+    <div class="chart-frame">
+      <div class="chart-wrap"><div id="chart-d-strip"></div></div>
+      <div class="tooltip" id="tt-d-strip"></div>
+    </div>
+    <div class="finding"><b>As distribuições não se sobrepõem:</b> o pior resultado do ACC_SYNC (10.581.929) ainda é melhor que o melhor resultado do SEQ/OMP (10.634.880). Gap médio de −0,74% — pequeno em termos relativos, mas sistemático em 30 execuções independentes.</div>
+  </section>
+
+  <section class="report">
+    <div class="sec-head">
+      <span class="sec-num mono">§06</span>
+      <h2 class="sec-title">Desempenho final</h2>
+      <span class="sec-tag">Fase E · aquecimento + 10 repetições</span>
+    </div>
+    <p class="lede">Speedup e eficiência do OpenMP por número de threads, com aquecimento descartado e mediana de 10 repetições cronometradas (semente fixa — mede ruído de sistema, não variância do algoritmo). A linha tracejada marca o speedup do OpenACC, fora da escala de threads.</p>
+    <div class="chart-frame">
+      <div class="chart-wrap"><div id="chart-e-speedup"></div></div>
+      <div class="tooltip" id="tt-e-speedup"></div>
+    </div>
+
+    <p class="lede" style="margin-top:28px;">Composição do tempo do OpenACC: fração medida em kernel GPU, transferências PCIe e processamento na CPU (ruído + busca local). Fase C usou 100 execuções únicas por ponto (sem a etapa de CPU separada); Fase E é a medição de referência, com 10 repetições.</p>
+    <div class="chart-frame">
+      <div class="chart-wrap"><div id="chart-e-breakdown"></div></div>
+      <div class="tooltip" id="tt-e-breakdown"></div>
+    </div>
+    <div class="finding"><b>93,4% do tempo do OpenACC é kernel GPU puro</b> — praticamente idêntico ao 93,04% medido de forma independente pela Fase C para o mesmo tamanho de sistema. Validação cruzada entre duas metodologias de medição diferentes.</div>
+  </section>
+
+  <section class="report">
+    <div class="sec-head">
+      <span class="sec-num mono">§07</span>
+      <h2 class="sec-title">Curva de convergência</h2>
+      <span class="sec-tag">execução dedicada · pop=320 · seed=42 · log(iter)</span>
+    </div>
+    <p class="lede">Melhor custo por iteração, logado a cada iteração (não a cada 500 como nas demais fases) numa execução dedicada. Eixo de iterações em escala logarítmica para revelar a convergência inicial rápida.</p>
+    <div class="chart-frame">
+      <div class="chart-wrap"><div id="chart-conv"></div></div>
+      <div class="tooltip" id="tt-conv"></div>
+    </div>
+    <div class="finding blue"><b>SEQ e OpenMP convergem em trajetória idêntica</b> (linhas sobrepostas — consequência direta da equivalência numérica). O ACC_SYNC parte de um ponto de partida diferente e converge para um patamar mais baixo, consistente com a variante algorítmica distinta que ele representa.</div>
+  </section>
+
+  <section class="report">
+    <div class="sec-head">
+      <span class="sec-num mono">§08</span>
+      <h2 class="sec-title">Síntese</h2>
+    </div>
+    <p class="lede" style="max-width:74ch;">
+      Paralelizar com OpenMP é seguro e sem risco algorítmico, mas tem teto baixo — nunca passou de ~44% de eficiência, em nenhum tamanho de população ou de sistema testado. Portar para GPU exigiu reformular a regra de movimento do algoritmo, o que só compensa acima de um limiar de carga computacional (~200–240 vagalumes, nesta implementação). Acima desse limiar, o OpenACC entregou o melhor dos dois mundos: <b>7,21× de speedup</b> sobre o SEQ, e uma qualidade de solução sistematicamente <b>melhor</b> — não apenas mais rápida — validada estatisticamente em 30 sementes independentes.
+    </p>
+  </section>
+
+  <footer class="report-footer">
+    Gerado a partir de results/phase_{b,c,d,e}/ e results/convergence/ — repositório ded-firefly, commit série 45b2a70→d0f3d6d.
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const DATA = {"fase_b_time": [{"pop": 60, "seq": 10.224, "omp12": 4.511, "acc": 5.332}, {"pop": 120, "seq": 34.103, "omp12": 7.244, "acc": 9.596}, {"pop": 160, "seq": 57.748, "omp12": 11.497, "acc": 12.454}, {"pop": 200, "seq": 87.783, "omp12": 16.434, "acc": 16.457}, {"pop": 240, "seq": 124.628, "omp12": 25.153, "acc": 19.907}, {"pop": 280, "seq": 167.712, "omp12": 31.108, "acc": 24.717}, {"pop": 320, "seq": 217.395, "omp12": 40.081, "acc": 29.894}, {"pop": 400, "seq": 336.905, "omp12": 62.874, "acc": 43.347}, {"pop": 480, "seq": 482.721, "omp12": 92.558, "acc": 62.617}], "fase_b_threads": {"60": [{"threads": 1, "time": 10.298, "speedup": 0.993, "eff": 99.3}, {"threads": 2, "time": 5.655, "speedup": 1.808, "eff": 90.4}, {"threads": 4, "time": 3.433, "speedup": 2.978, "eff": 74.5}, {"threads": 8, "time": 4.138, "speedup": 2.471, "eff": 30.9}, {"threads": 12, "time": 4.511, "speedup": 2.267, "eff": 18.9}], "240": [{"threads": 1, "time": 125.269, "speedup": 0.995, "eff": 99.5}, {"threads": 2, "time": 65.259, "speedup": 1.91, "eff": 95.5}, {"threads": 4, "time": 35.532, "speedup": 3.507, "eff": 87.7}, {"threads": 8, "time": 31.517, "speedup": 3.954, "eff": 49.4}, {"threads": 12, "time": 25.153, "speedup": 4.955, "eff": 41.3}], "480": [{"threads": 1, "time": 489.803, "speedup": 0.986, "eff": 98.6}, {"threads": 2, "time": 250.774, "speedup": 1.925, "eff": 96.2}, {"threads": 4, "time": 138.182, "speedup": 3.493, "eff": 87.3}, {"threads": 8, "time": 111.219, "speedup": 4.34, "eff": 54.3}, {"threads": 12, "time": 92.558, "speedup": 5.215, "eff": 43.5}]}, "fase_c_time": [{"system": 10, "n_vars": 240, "seq": 21.709, "omp12": 4.583, "acc": 3.826, "kernel_pct": 88.61, "pcie_pct": 4.73}, {"system": 100, "n_vars": 2400, "seq": 215.603, "omp12": 40.273, "acc": 29.707, "kernel_pct": 93.04, "pcie_pct": 4.43}, {"system": 200, "n_vars": 4800, "seq": 441.693, "omp12": 84.297, "acc": 62.869, "kernel_pct": 93.97, "pcie_pct": 3.56}, {"system": 500, "n_vars": 12000, "seq": 1138.136, "omp12": 222.657, "acc": 172.545, "kernel_pct": 94.92, "pcie_pct": 2.93}], "fase_d_costs": {"seq": [10634880.38, 10635621.38, 10637266.66, 10638192.79, 10639694.91, 10640143.71, 10641405.54, 10641641.71, 10641804.22, 10642693.69, 10642728.91, 10643317.34, 10643571.63, 10644127.38, 10644238.23, 10644694.91, 10645164.28, 10645633.42, 10645663.26, 10646134.04, 10646879.81, 10647120.23, 10647970.68, 10648957.6, 10649260.28, 10650649.61, 10650982.77, 10653531.08, 10669274.64, 10676747.09], "acc": [10553427.7, 10555077.75, 10558448.37, 10558865.75, 10559649.43, 10560209.43, 10560872.17, 10562029.65, 10562230.27, 10562956.61, 10563486.09, 10564141.01, 10564433.38, 10564469.75, 10565003.28, 10565397.95, 10566499.04, 10566535.93, 10567957.77, 10569345.9, 10570800.53, 10571432.85, 10571684.97, 10572322.31, 10574754.83, 10577677.68, 10577834.54, 10581380.52, 10581706.71, 10581929.13]}, "fase_e_stats": [{"version": "SEQ", "threads": "1", "median": 214.8418, "q1": 214.6749, "q3": 214.9921, "speedup": 1.0, "eff": null}, {"version": "OMP", "threads": "1", "median": 217.3081, "q1": 217.1789, "q3": 217.4543, "speedup": 0.989, "eff": 98.9}, {"version": "OMP", "threads": "2", "median": 112.483, "q1": 112.0538, "q3": 112.7891, "speedup": 1.91, "eff": 95.5}, {"version": "OMP", "threads": "4", "median": 62.9039, "q1": 62.8812, "q3": 62.9364, "speedup": 3.415, "eff": 85.4}, {"version": "OMP", "threads": "8", "median": 51.6268, "q1": 51.5208, "q3": 51.7444, "speedup": 4.161, "eff": 52.0}, {"version": "OMP", "threads": "12", "median": 42.1943, "q1": 42.1512, "q3": 42.2935, "speedup": 5.092, "eff": 42.4}, {"version": "ACC_SYNC", "threads": "GPU", "median": 29.8203, "q1": 29.5671, "q3": 29.8535, "speedup": 7.205, "eff": null}], "fase_e_breakdown": {"kernel": 27.838, "pcie": 1.3775, "cpu": 0.488}, "convergence": {"seq": [{"iter": 1, "cost": 10728600.99}, {"iter": 2, "cost": 10728450.79}, {"iter": 3, "cost": 10728133.16}, {"iter": 4, "cost": 10728133.16}, {"iter": 5, "cost": 10728013.35}, {"iter": 6, "cost": 10727856.81}, {"iter": 7, "cost": 10727849.76}, {"iter": 8, "cost": 10727849.76}, {"iter": 9, "cost": 10727847.63}, {"iter": 10, "cost": 10727847.63}, {"iter": 11, "cost": 10727847.63}, {"iter": 12, "cost": 10727665.16}, {"iter": 13, "cost": 10727647.89}, {"iter": 14, "cost": 10727645.63}, {"iter": 15, "cost": 10727616.66}, {"iter": 16, "cost": 10727590.9}, {"iter": 17, "cost": 10727575.06}, {"iter": 18, "cost": 10727553.95}, {"iter": 19, "cost": 10727232.68}, {"iter": 20, "cost": 10727186.57}, {"iter": 21, "cost": 10727138.02}, {"iter": 22, "cost": 10727134.52}, {"iter": 23, "cost": 10727102.34}, {"iter": 24, "cost": 10727101.68}, {"iter": 25, "cost": 10727091.03}, {"iter": 26, "cost": 10727091.03}, {"iter": 27, "cost": 10727003.4}, {"iter": 28, "cost": 10726950.97}, {"iter": 29, "cost": 10726950.97}, {"iter": 30, "cost": 10726924.06}, {"iter": 31, "cost": 10726924.06}, {"iter": 32, "cost": 10726924.06}, {"iter": 33, "cost": 10726915.42}, {"iter": 34, "cost": 10726586.26}, {"iter": 35, "cost": 10726438.27}, {"iter": 36, "cost": 10726272.82}, {"iter": 37, "cost": 10726272.82}, {"iter": 38, "cost": 10726200.99}, {"iter": 39, "cost": 10726183.42}, {"iter": 40, "cost": 10726183.42}, {"iter": 41, "cost": 10726077.12}, {"iter": 42, "cost": 10726018.49}, {"iter": 43, "cost": 10725425.92}, {"iter": 44, "cost": 10725080.24}, {"iter": 45, "cost": 10724895.99}, {"iter": 46, "cost": 10724895.99}, {"iter": 47, "cost": 10724568.75}, {"iter": 48, "cost": 10724271.96}, {"iter": 49, "cost": 10724271.96}, {"iter": 50, "cost": 10724271.96}, {"iter": 51, "cost": 10724242.85}, {"iter": 52, "cost": 10723857.48}, {"iter": 53, "cost": 10723628.63}, {"iter": 54, "cost": 10723609.07}, {"iter": 55, "cost": 10723605.76}, {"iter": 56, "cost": 10723477.24}, {"iter": 57, "cost": 10723473.84}, {"iter": 58, "cost": 10723447.77}, {"iter": 59, "cost": 10723442.11}, {"iter": 60, "cost": 10723436.35}, {"iter": 61, "cost": 10723428.24}, {"iter": 62, "cost": 10723413.82}, {"iter": 63, "cost": 10723258.27}, {"iter": 64, "cost": 10723240.22}, {"iter": 65, "cost": 10723219.44}, {"iter": 66, "cost": 10723219.44}, {"iter": 67, "cost": 10723017.74}, {"iter": 68, "cost": 10721346.41}, {"iter": 69, "cost": 10721060.27}, {"iter": 70, "cost": 10720692.5}, {"iter": 71, "cost": 10717904.42}, {"iter": 72, "cost": 10715569.36}, {"iter": 73, "cost": 10715288.41}, {"iter": 74, "cost": 10715288.41}, {"iter": 75, "cost": 10714880.66}, {"iter": 76, "cost": 10714427.5}, {"iter": 77, "cost": 10714427.5}, {"iter": 78, "cost": 10714408.01}, {"iter": 79, "cost": 10714408.01}, {"iter": 80, "cost": 10714045.49}, {"iter": 81, "cost": 10714045.49}, {"iter": 82, "cost": 10713644.69}, {"iter": 83, "cost": 10713638.2}, {"iter": 84, "cost": 10713638.2}, {"iter": 85, "cost": 10713447.8}, {"iter": 86, "cost": 10713438.85}, {"iter": 87, "cost": 10713065.77}, {"iter": 88, "cost": 10713048.9}, {"iter": 89, "cost": 10712685.16}, {"iter": 90, "cost": 10712502.56}, {"iter": 91, "cost": 10712502.56}, {"iter": 92, "cost": 10712446.76}, {"iter": 93, "cost": 10712357.09}, {"iter": 94, "cost": 10712357.09}, {"iter": 95, "cost": 10712205.09}, {"iter": 96, "cost": 10712182.96}, {"iter": 97, "cost": 10712017.15}, {"iter": 98, "cost": 10712003.15}, {"iter": 99, "cost": 10712003.15}, {"iter": 100, "cost": 10711961.27}, {"iter": 110, "cost": 10710643.55}, {"iter": 120, "cost": 10708556.67}, {"iter": 130, "cost": 10707068.63}, {"iter": 140, "cost": 10706216.01}, {"iter": 150, "cost": 10705316.0}, {"iter": 160, "cost": 10704373.02}, {"iter": 170, "cost": 10703511.74}, {"iter": 180, "cost": 10700316.71}, {"iter": 190, "cost": 10699675.81}, {"iter": 200, "cost": 10698444.23}, {"iter": 210, "cost": 10697488.24}, {"iter": 220, "cost": 10696021.42}, {"iter": 230, "cost": 10695631.93}, {"iter": 240, "cost": 10695452.28}, {"iter": 250, "cost": 10694623.86}, {"iter": 260, "cost": 10693533.55}, {"iter": 270, "cost": 10693208.52}, {"iter": 280, "cost": 10691953.97}, {"iter": 290, "cost": 10690069.76}, {"iter": 300, "cost": 10689514.19}, {"iter": 310, "cost": 10687592.91}, {"iter": 320, "cost": 10686624.78}, {"iter": 330, "cost": 10686079.26}, {"iter": 340, "cost": 10685115.06}, {"iter": 350, "cost": 10684175.34}, {"iter": 360, "cost": 10683934.69}, {"iter": 370, "cost": 10681871.12}, {"iter": 380, "cost": 10680946.61}, {"iter": 390, "cost": 10680426.12}, {"iter": 400, "cost": 10679801.89}, {"iter": 410, "cost": 10678644.4}, {"iter": 420, "cost": 10677898.25}, {"iter": 430, "cost": 10676558.81}, {"iter": 440, "cost": 10675608.1}, {"iter": 450, "cost": 10674233.36}, {"iter": 460, "cost": 10673388.27}, {"iter": 470, "cost": 10673185.53}, {"iter": 480, "cost": 10672155.44}, {"iter": 490, "cost": 10671926.51}, {"iter": 500, "cost": 10671879.51}, {"iter": 510, "cost": 10671402.93}, {"iter": 520, "cost": 10670883.82}, {"iter": 530, "cost": 10670637.23}, {"iter": 540, "cost": 10670376.22}, {"iter": 550, "cost": 10670185.74}, {"iter": 560, "cost": 10669208.88}, {"iter": 570, "cost": 10668701.05}, {"iter": 580, "cost": 10668018.03}, {"iter": 590, "cost": 10667314.08}, {"iter": 600, "cost": 10666410.41}, {"iter": 610, "cost": 10666034.0}, {"iter": 620, "cost": 10665765.91}, {"iter": 630, "cost": 10665381.76}, {"iter": 640, "cost": 10665027.41}, {"iter": 650, "cost": 10664385.85}, {"iter": 660, "cost": 10664023.58}, {"iter": 670, "cost": 10663868.93}, {"iter": 680, "cost": 10663247.86}, {"iter": 690, "cost": 10662938.08}, {"iter": 700, "cost": 10662370.4}, {"iter": 710, "cost": 10661552.48}, {"iter": 720, "cost": 10661195.98}, {"iter": 730, "cost": 10660823.72}, {"iter": 740, "cost": 10660317.15}, {"iter": 750, "cost": 10658967.47}, {"iter": 760, "cost": 10658217.14}, {"iter": 770, "cost": 10657745.53}, {"iter": 780, "cost": 10657433.92}, {"iter": 790, "cost": 10657028.48}, {"iter": 800, "cost": 10656880.08}, {"iter": 810, "cost": 10656371.5}, {"iter": 820, "cost": 10655816.53}, {"iter": 830, "cost": 10655250.65}, {"iter": 840, "cost": 10654504.77}, {"iter": 850, "cost": 10653259.37}, {"iter": 860, "cost": 10653120.78}, {"iter": 870, "cost": 10652892.26}, {"iter": 880, "cost": 10651902.56}, {"iter": 890, "cost": 10651433.99}, {"iter": 900, "cost": 10650832.82}, {"iter": 910, "cost": 10650233.09}, {"iter": 920, "cost": 10649501.91}, {"iter": 930, "cost": 10649343.87}, {"iter": 940, "cost": 10648665.72}, {"iter": 950, "cost": 10648429.16}, {"iter": 960, "cost": 10647012.24}, {"iter": 970, "cost": 10645659.7}, {"iter": 980, "cost": 10644925.05}, {"iter": 990, "cost": 10644344.08}, {"iter": 1000, "cost": 10643317.34}], "omp12": [{"iter": 1, "cost": 10728600.99}, {"iter": 2, "cost": 10728450.79}, {"iter": 3, "cost": 10728133.16}, {"iter": 4, "cost": 10728133.16}, {"iter": 5, "cost": 10728013.35}, {"iter": 6, "cost": 10727856.81}, {"iter": 7, "cost": 10727849.76}, {"iter": 8, "cost": 10727849.76}, {"iter": 9, "cost": 10727847.63}, {"iter": 10, "cost": 10727847.63}, {"iter": 11, "cost": 10727847.63}, {"iter": 12, "cost": 10727665.16}, {"iter": 13, "cost": 10727647.89}, {"iter": 14, "cost": 10727645.63}, {"iter": 15, "cost": 10727616.66}, {"iter": 16, "cost": 10727590.9}, {"iter": 17, "cost": 10727575.06}, {"iter": 18, "cost": 10727553.95}, {"iter": 19, "cost": 10727232.68}, {"iter": 20, "cost": 10727186.57}, {"iter": 21, "cost": 10727138.02}, {"iter": 22, "cost": 10727134.52}, {"iter": 23, "cost": 10727102.34}, {"iter": 24, "cost": 10727101.68}, {"iter": 25, "cost": 10727091.03}, {"iter": 26, "cost": 10727091.03}, {"iter": 27, "cost": 10727003.4}, {"iter": 28, "cost": 10726950.97}, {"iter": 29, "cost": 10726950.97}, {"iter": 30, "cost": 10726924.06}, {"iter": 31, "cost": 10726924.06}, {"iter": 32, "cost": 10726924.06}, {"iter": 33, "cost": 10726915.42}, {"iter": 34, "cost": 10726586.26}, {"iter": 35, "cost": 10726438.27}, {"iter": 36, "cost": 10726272.82}, {"iter": 37, "cost": 10726272.82}, {"iter": 38, "cost": 10726200.99}, {"iter": 39, "cost": 10726183.42}, {"iter": 40, "cost": 10726183.42}, {"iter": 41, "cost": 10726077.12}, {"iter": 42, "cost": 10726018.49}, {"iter": 43, "cost": 10725425.92}, {"iter": 44, "cost": 10725080.24}, {"iter": 45, "cost": 10724895.99}, {"iter": 46, "cost": 10724895.99}, {"iter": 47, "cost": 10724568.75}, {"iter": 48, "cost": 10724271.96}, {"iter": 49, "cost": 10724271.96}, {"iter": 50, "cost": 10724271.96}, {"iter": 51, "cost": 10724242.85}, {"iter": 52, "cost": 10723857.48}, {"iter": 53, "cost": 10723628.63}, {"iter": 54, "cost": 10723609.07}, {"iter": 55, "cost": 10723605.76}, {"iter": 56, "cost": 10723477.24}, {"iter": 57, "cost": 10723473.84}, {"iter": 58, "cost": 10723447.77}, {"iter": 59, "cost": 10723442.11}, {"iter": 60, "cost": 10723436.35}, {"iter": 61, "cost": 10723428.24}, {"iter": 62, "cost": 10723413.82}, {"iter": 63, "cost": 10723258.27}, {"iter": 64, "cost": 10723240.22}, {"iter": 65, "cost": 10723219.44}, {"iter": 66, "cost": 10723059.59}, {"iter": 67, "cost": 10721675.25}, {"iter": 68, "cost": 10721346.41}, {"iter": 69, "cost": 10721060.27}, {"iter": 70, "cost": 10718155.82}, {"iter": 71, "cost": 10716384.07}, {"iter": 72, "cost": 10715569.36}, {"iter": 73, "cost": 10715288.41}, {"iter": 74, "cost": 10715288.41}, {"iter": 75, "cost": 10714880.66}, {"iter": 76, "cost": 10714427.5}, {"iter": 77, "cost": 10714427.5}, {"iter": 78, "cost": 10714408.01}, {"iter": 79, "cost": 10714408.01}, {"iter": 80, "cost": 10714045.49}, {"iter": 81, "cost": 10714045.49}, {"iter": 82, "cost": 10713644.69}, {"iter": 83, "cost": 10713638.2}, {"iter": 84, "cost": 10713638.2}, {"iter": 85, "cost": 10713447.8}, {"iter": 86, "cost": 10713438.85}, {"iter": 87, "cost": 10713065.77}, {"iter": 88, "cost": 10713048.9}, {"iter": 89, "cost": 10712685.16}, {"iter": 90, "cost": 10712502.56}, {"iter": 91, "cost": 10712502.56}, {"iter": 92, "cost": 10712446.76}, {"iter": 93, "cost": 10712357.09}, {"iter": 94, "cost": 10712357.09}, {"iter": 95, "cost": 10712205.09}, {"iter": 96, "cost": 10712182.96}, {"iter": 97, "cost": 10712017.15}, {"iter": 98, "cost": 10712003.15}, {"iter": 99, "cost": 10712003.15}, {"iter": 100, "cost": 10711961.27}, {"iter": 110, "cost": 10710643.55}, {"iter": 120, "cost": 10708556.67}, {"iter": 130, "cost": 10707068.63}, {"iter": 140, "cost": 10706216.01}, {"iter": 150, "cost": 10705316.0}, {"iter": 160, "cost": 10704373.02}, {"iter": 170, "cost": 10703511.74}, {"iter": 180, "cost": 10700316.71}, {"iter": 190, "cost": 10699675.81}, {"iter": 200, "cost": 10698444.23}, {"iter": 210, "cost": 10697488.24}, {"iter": 220, "cost": 10696021.42}, {"iter": 230, "cost": 10695631.93}, {"iter": 240, "cost": 10695452.28}, {"iter": 250, "cost": 10694623.86}, {"iter": 260, "cost": 10693533.55}, {"iter": 270, "cost": 10693208.52}, {"iter": 280, "cost": 10691953.97}, {"iter": 290, "cost": 10690069.76}, {"iter": 300, "cost": 10689514.19}, {"iter": 310, "cost": 10687592.91}, {"iter": 320, "cost": 10686624.78}, {"iter": 330, "cost": 10686079.26}, {"iter": 340, "cost": 10685115.06}, {"iter": 350, "cost": 10684175.34}, {"iter": 360, "cost": 10683934.69}, {"iter": 370, "cost": 10681871.12}, {"iter": 380, "cost": 10680946.61}, {"iter": 390, "cost": 10680426.12}, {"iter": 400, "cost": 10679801.89}, {"iter": 410, "cost": 10678644.4}, {"iter": 420, "cost": 10677898.25}, {"iter": 430, "cost": 10676558.81}, {"iter": 440, "cost": 10675608.1}, {"iter": 450, "cost": 10674233.36}, {"iter": 460, "cost": 10673388.27}, {"iter": 470, "cost": 10673185.53}, {"iter": 480, "cost": 10672155.44}, {"iter": 490, "cost": 10671926.51}, {"iter": 500, "cost": 10671879.51}, {"iter": 510, "cost": 10671402.93}, {"iter": 520, "cost": 10670883.82}, {"iter": 530, "cost": 10670637.23}, {"iter": 540, "cost": 10670376.22}, {"iter": 550, "cost": 10670185.74}, {"iter": 560, "cost": 10669208.88}, {"iter": 570, "cost": 10668701.05}, {"iter": 580, "cost": 10668018.03}, {"iter": 590, "cost": 10667314.08}, {"iter": 600, "cost": 10666410.41}, {"iter": 610, "cost": 10666034.0}, {"iter": 620, "cost": 10665765.91}, {"iter": 630, "cost": 10665381.76}, {"iter": 640, "cost": 10665027.41}, {"iter": 650, "cost": 10664385.85}, {"iter": 660, "cost": 10664023.58}, {"iter": 670, "cost": 10663868.93}, {"iter": 680, "cost": 10663247.86}, {"iter": 690, "cost": 10662938.08}, {"iter": 700, "cost": 10662370.4}, {"iter": 710, "cost": 10661552.48}, {"iter": 720, "cost": 10661195.98}, {"iter": 730, "cost": 10660823.72}, {"iter": 740, "cost": 10660317.15}, {"iter": 750, "cost": 10658967.47}, {"iter": 760, "cost": 10658217.14}, {"iter": 770, "cost": 10657745.53}, {"iter": 780, "cost": 10657433.92}, {"iter": 790, "cost": 10657028.48}, {"iter": 800, "cost": 10656880.08}, {"iter": 810, "cost": 10656371.5}, {"iter": 820, "cost": 10655816.53}, {"iter": 830, "cost": 10655250.65}, {"iter": 840, "cost": 10654504.77}, {"iter": 850, "cost": 10653259.37}, {"iter": 860, "cost": 10653120.78}, {"iter": 870, "cost": 10652892.26}, {"iter": 880, "cost": 10651902.56}, {"iter": 890, "cost": 10651433.99}, {"iter": 900, "cost": 10650832.82}, {"iter": 910, "cost": 10650233.09}, {"iter": 920, "cost": 10649501.91}, {"iter": 930, "cost": 10649343.87}, {"iter": 940, "cost": 10648665.72}, {"iter": 950, "cost": 10648429.16}, {"iter": 960, "cost": 10647012.24}, {"iter": 970, "cost": 10645659.7}, {"iter": 980, "cost": 10644925.05}, {"iter": 990, "cost": 10644344.08}, {"iter": 1000, "cost": 10643317.34}], "acc": [{"iter": 1, "cost": 10682015.03}, {"iter": 2, "cost": 10671229.62}, {"iter": 3, "cost": 10671229.62}, {"iter": 4, "cost": 10658477.65}, {"iter": 5, "cost": 10658477.65}, {"iter": 6, "cost": 10658467.38}, {"iter": 7, "cost": 10653342.73}, {"iter": 8, "cost": 10653342.73}, {"iter": 9, "cost": 10653122.73}, {"iter": 10, "cost": 10653122.73}, {"iter": 11, "cost": 10650642.15}, {"iter": 12, "cost": 10650597.52}, {"iter": 13, "cost": 10639912.89}, {"iter": 14, "cost": 10639912.89}, {"iter": 15, "cost": 10639727.12}, {"iter": 16, "cost": 10634259.63}, {"iter": 17, "cost": 10633478.5}, {"iter": 18, "cost": 10633478.5}, {"iter": 19, "cost": 10633478.5}, {"iter": 20, "cost": 10623653.57}, {"iter": 21, "cost": 10622753.86}, {"iter": 22, "cost": 10621576.32}, {"iter": 23, "cost": 10621576.32}, {"iter": 24, "cost": 10621576.32}, {"iter": 25, "cost": 10621576.32}, {"iter": 26, "cost": 10621513.02}, {"iter": 27, "cost": 10620981.93}, {"iter": 28, "cost": 10620826.8}, {"iter": 29, "cost": 10620693.66}, {"iter": 30, "cost": 10620079.86}, {"iter": 31, "cost": 10620050.52}, {"iter": 32, "cost": 10620002.6}, {"iter": 33, "cost": 10619982.37}, {"iter": 34, "cost": 10619982.37}, {"iter": 35, "cost": 10619912.15}, {"iter": 36, "cost": 10619763.92}, {"iter": 37, "cost": 10619763.39}, {"iter": 38, "cost": 10619649.53}, {"iter": 39, "cost": 10619649.53}, {"iter": 40, "cost": 10619621.74}, {"iter": 41, "cost": 10619575.27}, {"iter": 42, "cost": 10619531.81}, {"iter": 43, "cost": 10619493.65}, {"iter": 44, "cost": 10619456.63}, {"iter": 45, "cost": 10619456.63}, {"iter": 46, "cost": 10619450.22}, {"iter": 47, "cost": 10619428.02}, {"iter": 48, "cost": 10619428.02}, {"iter": 49, "cost": 10619425.69}, {"iter": 50, "cost": 10619411.34}, {"iter": 51, "cost": 10619411.34}, {"iter": 52, "cost": 10619375.98}, {"iter": 53, "cost": 10619375.98}, {"iter": 54, "cost": 10619332.07}, {"iter": 55, "cost": 10618846.46}, {"iter": 56, "cost": 10618845.86}, {"iter": 57, "cost": 10618803.59}, {"iter": 58, "cost": 10618803.59}, {"iter": 59, "cost": 10618785.84}, {"iter": 60, "cost": 10618751.21}, {"iter": 61, "cost": 10618601.11}, {"iter": 62, "cost": 10618561.44}, {"iter": 63, "cost": 10618559.34}, {"iter": 64, "cost": 10618459.92}, {"iter": 65, "cost": 10618403.87}, {"iter": 66, "cost": 10618030.0}, {"iter": 67, "cost": 10618022.76}, {"iter": 68, "cost": 10618013.8}, {"iter": 69, "cost": 10618013.8}, {"iter": 70, "cost": 10618013.8}, {"iter": 71, "cost": 10617942.83}, {"iter": 72, "cost": 10617942.83}, {"iter": 73, "cost": 10617880.58}, {"iter": 74, "cost": 10617859.91}, {"iter": 75, "cost": 10617662.06}, {"iter": 76, "cost": 10617427.73}, {"iter": 77, "cost": 10617427.73}, {"iter": 78, "cost": 10617427.39}, {"iter": 79, "cost": 10617427.39}, {"iter": 80, "cost": 10616889.41}, {"iter": 81, "cost": 10616192.77}, {"iter": 82, "cost": 10616033.45}, {"iter": 83, "cost": 10616030.18}, {"iter": 84, "cost": 10616030.18}, {"iter": 85, "cost": 10616030.01}, {"iter": 86, "cost": 10615709.03}, {"iter": 87, "cost": 10615690.55}, {"iter": 88, "cost": 10615683.94}, {"iter": 89, "cost": 10615683.94}, {"iter": 90, "cost": 10615675.86}, {"iter": 91, "cost": 10615646.42}, {"iter": 92, "cost": 10615499.46}, {"iter": 93, "cost": 10615465.52}, {"iter": 94, "cost": 10615449.94}, {"iter": 95, "cost": 10615449.94}, {"iter": 96, "cost": 10615448.3}, {"iter": 97, "cost": 10615435.84}, {"iter": 98, "cost": 10615435.84}, {"iter": 99, "cost": 10615433.59}, {"iter": 100, "cost": 10615433.59}, {"iter": 110, "cost": 10614681.46}, {"iter": 120, "cost": 10614582.05}, {"iter": 130, "cost": 10613298.41}, {"iter": 140, "cost": 10612589.23}, {"iter": 150, "cost": 10612309.04}, {"iter": 160, "cost": 10611166.69}, {"iter": 170, "cost": 10610799.8}, {"iter": 180, "cost": 10610013.99}, {"iter": 190, "cost": 10609674.28}, {"iter": 200, "cost": 10609165.51}, {"iter": 210, "cost": 10608455.75}, {"iter": 220, "cost": 10607626.78}, {"iter": 230, "cost": 10607160.67}, {"iter": 240, "cost": 10606731.53}, {"iter": 250, "cost": 10606236.05}, {"iter": 260, "cost": 10606140.42}, {"iter": 270, "cost": 10605748.95}, {"iter": 280, "cost": 10605495.23}, {"iter": 290, "cost": 10604624.68}, {"iter": 300, "cost": 10604289.0}, {"iter": 310, "cost": 10603423.62}, {"iter": 320, "cost": 10603209.29}, {"iter": 330, "cost": 10602382.02}, {"iter": 340, "cost": 10601581.96}, {"iter": 350, "cost": 10601323.22}, {"iter": 360, "cost": 10601178.01}, {"iter": 370, "cost": 10601013.74}, {"iter": 380, "cost": 10600465.49}, {"iter": 390, "cost": 10599707.75}, {"iter": 400, "cost": 10598990.3}, {"iter": 410, "cost": 10597740.13}, {"iter": 420, "cost": 10597568.83}, {"iter": 430, "cost": 10597169.98}, {"iter": 440, "cost": 10596800.62}, {"iter": 450, "cost": 10596283.28}, {"iter": 460, "cost": 10595937.59}, {"iter": 470, "cost": 10594810.43}, {"iter": 480, "cost": 10594463.58}, {"iter": 490, "cost": 10594363.83}, {"iter": 500, "cost": 10594182.07}, {"iter": 510, "cost": 10594005.99}, {"iter": 520, "cost": 10593151.61}, {"iter": 530, "cost": 10592741.11}, {"iter": 540, "cost": 10592447.45}, {"iter": 550, "cost": 10591832.17}, {"iter": 560, "cost": 10591351.94}, {"iter": 570, "cost": 10591170.63}, {"iter": 580, "cost": 10590592.05}, {"iter": 590, "cost": 10590188.75}, {"iter": 600, "cost": 10588900.02}, {"iter": 610, "cost": 10588156.17}, {"iter": 620, "cost": 10587789.71}, {"iter": 630, "cost": 10587643.83}, {"iter": 640, "cost": 10587471.77}, {"iter": 650, "cost": 10586676.72}, {"iter": 660, "cost": 10586447.42}, {"iter": 670, "cost": 10586014.2}, {"iter": 680, "cost": 10585953.94}, {"iter": 690, "cost": 10585609.67}, {"iter": 700, "cost": 10585335.76}, {"iter": 710, "cost": 10584592.19}, {"iter": 720, "cost": 10583899.56}, {"iter": 730, "cost": 10583443.16}, {"iter": 740, "cost": 10582341.33}, {"iter": 750, "cost": 10581809.55}, {"iter": 760, "cost": 10581516.69}, {"iter": 770, "cost": 10581428.71}, {"iter": 780, "cost": 10581413.29}, {"iter": 790, "cost": 10581268.53}, {"iter": 800, "cost": 10580739.56}, {"iter": 810, "cost": 10580384.78}, {"iter": 820, "cost": 10580157.23}, {"iter": 830, "cost": 10579905.82}, {"iter": 840, "cost": 10578965.15}, {"iter": 850, "cost": 10578281.22}, {"iter": 860, "cost": 10577908.93}, {"iter": 870, "cost": 10577709.46}, {"iter": 880, "cost": 10577622.98}, {"iter": 890, "cost": 10577488.02}, {"iter": 900, "cost": 10577246.35}, {"iter": 910, "cost": 10577040.81}, {"iter": 920, "cost": 10576511.09}, {"iter": 930, "cost": 10576296.82}, {"iter": 940, "cost": 10576094.87}, {"iter": 950, "cost": 10575967.87}, {"iter": 960, "cost": 10575723.14}, {"iter": 970, "cost": 10575422.69}, {"iter": 980, "cost": 10575255.29}, {"iter": 990, "cost": 10575024.93}, {"iter": 1000, "cost": 10574754.83}]}};
+
+  const NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs, children) {
+    const e = document.createElementNS(NS, tag);
+    if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (children) children.forEach(c => c && e.appendChild(c));
+    return e;
+  }
+  function txt(s) { return document.createTextNode(s); }
+
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  function fmtS(v) {
+    if (v >= 100) return v.toFixed(0);
+    if (v >= 10) return v.toFixed(1);
+    return v.toFixed(2);
+  }
+  function fmtCost(v) {
+    return (v / 1e6).toFixed(4) + "M";
+  }
+  function niceLogTicks(min, max) {
+    const ticks = [];
+    let p = Math.pow(10, Math.floor(Math.log10(min)));
+    while (p <= max * 1.001) {
+      [1, 2, 5].forEach(m => { const v = m * p; if (v >= min * 0.999 && v <= max * 1.001) ticks.push(v); });
+      p *= 10;
+    }
+    return ticks;
+  }
+
+  /* ---------------- generic line chart (shared-x hover) ---------------- */
+  function lineChart(mountId, ttId, opts) {
+    const mount = document.getElementById(mountId);
+    const tooltip = document.getElementById(ttId);
+    const W = 800, H = 340;
+    const margin = { top: 16, right: 20, bottom: 34, left: 58 };
+    const innerW = W - margin.left - margin.right;
+    const innerH = H - margin.top - margin.bottom;
+
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart-svg" });
+
+    const xScale = (x) => opts.logX
+      ? margin.left + (Math.log10(x) - Math.log10(opts.xDomain[0])) / (Math.log10(opts.xDomain[1]) - Math.log10(opts.xDomain[0])) * innerW
+      : margin.left + (x - opts.xDomain[0]) / (opts.xDomain[1] - opts.xDomain[0]) * innerW;
+    const yScale = (y) => opts.logY
+      ? margin.top + innerH - (Math.log10(y) - Math.log10(opts.yDomain[0])) / (Math.log10(opts.yDomain[1]) - Math.log10(opts.yDomain[0])) * innerH
+      : margin.top + innerH - (y - opts.yDomain[0]) / (opts.yDomain[1] - opts.yDomain[0]) * innerH;
+
+    const gY = el("g", {});
+    opts.yTicks.forEach(t => {
+      const y = yScale(t);
+      gY.appendChild(el("line", { x1: margin.left, x2: margin.left + innerW, y1: y, y2: y, class: "gridline" }));
+      gY.appendChild(el("text", { x: margin.left - 8, y: y + 3.5, class: "axis-label", "text-anchor": "end" }, [txt(opts.yFmt(t))]));
+    });
+    svg.appendChild(gY);
+
+    const gX = el("g", {});
+    opts.xTicks.forEach(t => {
+      const x = xScale(t);
+      gX.appendChild(el("text", { x, y: margin.top + innerH + 20, class: "axis-label", "text-anchor": "middle" }, [txt(opts.xFmt(t))]));
+    });
+    svg.appendChild(gX);
+    svg.appendChild(el("line", { x1: margin.left, x2: margin.left + innerW, y1: margin.top + innerH, y2: margin.top + innerH, class: "axis-line" }));
+    if (opts.yAxisTitle) svg.appendChild(el("text", { x: margin.left, y: 10, class: "axis-title" }, [txt(opts.yAxisTitle)]));
+    if (opts.xAxisTitle) svg.appendChild(el("text", { x: margin.left + innerW, y: H - 2, class: "axis-title", "text-anchor": "end" }, [txt(opts.xAxisTitle)]));
+
+    opts.series.forEach(s => {
+      const pts = s.points.map(p => `${xScale(p.x).toFixed(2)},${yScale(p.y).toFixed(2)}`).join(" ");
+      svg.appendChild(el("polyline", { points: pts, fill: "none", stroke: s.color, "stroke-width": s.width || 2, "stroke-dasharray": s.dash || "", "stroke-linejoin": "round", "stroke-linecap": "round" }));
+      if (s.points.length <= 14) {
+        s.points.forEach(p => svg.appendChild(el("circle", { cx: xScale(p.x), cy: yScale(p.y), r: 3.4, fill: s.color })));
+      }
+      if (s.endLabel) {
+        const last = s.points[s.points.length - 1];
+        svg.appendChild(el("text", { x: xScale(last.x) + 6, y: yScale(last.y) + 4, class: "axis-label", fill: s.color, style: `fill:${s.color}` }, [txt(s.endLabel)]));
+      }
+    });
+
+    // hover
+    const crosshair = el("line", { class: "crosshair", y1: margin.top, y2: margin.top + innerH, x1: -100, x2: -100 });
+    svg.appendChild(crosshair);
+    const xValues = opts.series[0].points.map(p => p.x);
+    const overlay = el("rect", { x: margin.left, y: margin.top, width: innerW, height: innerH, fill: "transparent" });
+    overlay.style.cursor = "crosshair";
+    svg.appendChild(overlay);
+
+    function nearestIndex(mx) {
+      let best = 0, bestD = Infinity;
+      xValues.forEach((xv, i) => {
+        const d = Math.abs(xScale(xv) - mx);
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      return best;
+    }
+
+    overlay.addEventListener("mousemove", (ev) => {
+      const rect = svg.getBoundingClientRect();
+      const mx = (ev.clientX - rect.left) * (W / rect.width);
+      const idx = nearestIndex(mx);
+      const xv = xValues[idx];
+      crosshair.setAttribute("x1", xScale(xv));
+      crosshair.setAttribute("x2", xScale(xv));
+      const lines = [opts.xFmt(xv)];
+      opts.series.forEach(s => { if (s.points[idx]) lines.push(`${s.name}: ${opts.tooltipYFmt ? opts.tooltipYFmt(s.points[idx].y) : s.points[idx].y}`); });
+      tooltip.innerHTML = lines.join("<br>");
+      const cRect = mount.parentElement.getBoundingClientRect();
+      tooltip.style.left = ((ev.clientX - cRect.left) + 14) + "px";
+      tooltip.style.top = ((ev.clientY - cRect.top) - 10) + "px";
+      tooltip.style.opacity = 1;
+    });
+    overlay.addEventListener("mouseleave", () => { tooltip.style.opacity = 0; crosshair.setAttribute("x1", -100); crosshair.setAttribute("x2", -100); });
+
+    mount.innerHTML = "";
+    mount.appendChild(svg);
+
+    if (opts.legend) {
+      const legend = el("div", { class: "legend-row" });
+      opts.legend.forEach(l => {
+        const item = el("div", { class: "legend-item" });
+        item.appendChild(el(l.dash ? "span" : "span", { class: "legend-swatch", style: `background:${l.color};${l.dash ? "background-image:linear-gradient(90deg,"+l.color+" 60%,transparent 0);background-size:6px 3px;" : ""}` }));
+        item.appendChild(txt(l.label));
+        legend.appendChild(item);
+      });
+      mount.appendChild(legend);
+    }
+  }
+
+  /* ---------------- Fig B: tempo x populacao ---------------- */
+  (function () {
+    const rows = DATA.fase_b_time;
+    const xs = rows.map(r => r.pop);
+    const yAll = rows.flatMap(r => [r.seq, r.omp12, r.acc]);
+    lineChart("chart-b-time", "tt-b-time", {
+      series: [
+        { name: "SEQ", color: cssVar("--series-seq"), points: rows.map(r => ({ x: r.pop, y: r.seq })) },
+        { name: "OMP@12", color: cssVar("--series-omp"), points: rows.map(r => ({ x: r.pop, y: r.omp12 })) },
+        { name: "ACC_SYNC", color: cssVar("--accent"), points: rows.map(r => ({ x: r.pop, y: r.acc })), width: 2.4 },
+      ],
+      logX: false, logY: true,
+      xDomain: [xs[0] - 10, xs[xs.length - 1] + 10],
+      yDomain: [3, 550],
+      xTicks: xs, yTicks: niceLogTicks(3, 550),
+      xFmt: (x) => x, yFmt: (y) => fmtS(y),
+      tooltipYFmt: (y) => fmtS(y) + "s",
+      xAxisTitle: "população (vagalumes)", yAxisTitle: "tempo (s, log)",
+      legend: [
+        { color: cssVar("--series-seq"), label: "SEQ" },
+        { color: cssVar("--series-omp"), label: "OpenMP @ 12 threads" },
+        { color: cssVar("--accent"), label: "OpenACC (ACC_SYNC)" },
+      ],
+    });
+  })();
+
+  /* ---------------- Fig B: eficiencia threads ---------------- */
+  (function () {
+    const anchors = ["60", "240", "480"];
+    const colors = { "60": cssVar("--series-seq"), "240": cssVar("--series-omp"), "480": cssVar("--accent") };
+    const series = anchors.map(a => ({
+      name: `pop=${a}`, color: colors[a],
+      points: DATA.fase_b_threads[a].map(p => ({ x: p.threads, y: p.eff })),
+    }));
+    lineChart("chart-b-threads", "tt-b-threads", {
+      series,
+      logX: true, logY: false,
+      xDomain: [0.9, 13],
+      yDomain: [0, 105],
+      xTicks: [1, 2, 4, 8, 12], yTicks: [0, 20, 40, 60, 80, 100],
+      xFmt: (x) => x, yFmt: (y) => y + "%",
+      tooltipYFmt: (y) => y.toFixed(1) + "%",
+      xAxisTitle: "threads OpenMP (log)", yAxisTitle: "eficiência (%)",
+      legend: [
+        { color: colors["60"], label: "população 60 (menor)" },
+        { color: colors["240"], label: "população 240 (meio)" },
+        { color: colors["480"], label: "população 480 (maior)" },
+      ],
+    });
+  })();
+
+  /* ---------------- Fig C: tempo x sistema ---------------- */
+  (function () {
+    const rows = DATA.fase_c_time;
+    lineChart("chart-c-time", "tt-c-time", {
+      series: [
+        { name: "SEQ", color: cssVar("--series-seq"), points: rows.map(r => ({ x: r.system, y: r.seq })) },
+        { name: "OMP@12", color: cssVar("--series-omp"), points: rows.map(r => ({ x: r.system, y: r.omp12 })) },
+        { name: "ACC_SYNC", color: cssVar("--accent"), points: rows.map(r => ({ x: r.system, y: r.acc })), width: 2.4 },
+      ],
+      logX: true, logY: true,
+      xDomain: [8, 600],
+      yDomain: [3, 1300],
+      xTicks: [10, 100, 200, 500], yTicks: niceLogTicks(3, 1300),
+      xFmt: (x) => x, yFmt: (y) => fmtS(y),
+      tooltipYFmt: (y) => fmtS(y) + "s",
+      xAxisTitle: "unidades geradoras (log)", yAxisTitle: "tempo (s, log)",
+      legend: [
+        { color: cssVar("--series-seq"), label: "SEQ" },
+        { color: cssVar("--series-omp"), label: "OpenMP @ 12 threads" },
+        { color: cssVar("--accent"), label: "OpenACC (ACC_SYNC)" },
+      ],
+    });
+  })();
+
+  /* ---------------- Fig D: strip plot ---------------- */
+  (function () {
+    const mount = document.getElementById("chart-d-strip");
+    const tooltip = document.getElementById("tt-d-strip");
+    const W = 800, H = 300;
+    const margin = { top: 16, right: 24, bottom: 30, left: 90 };
+    const innerW = W - margin.left - margin.right;
+    const innerH = H - margin.top - margin.bottom;
+    const all = DATA.fase_d_costs.seq.concat(DATA.fase_d_costs.acc);
+    const yMin = Math.min(...all), yMax = Math.max(...all);
+    const pad = (yMax - yMin) * 0.08;
+    const yDomain = [yMin - pad, yMax + pad];
+    const yScale = (y) => margin.top + innerH - (y - yDomain[0]) / (yDomain[1] - yDomain[0]) * innerH;
+
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart-svg" });
+    const yTicks = 5;
+    for (let i = 0; i <= yTicks; i++) {
+      const y = yDomain[0] + (yDomain[1] - yDomain[0]) * i / yTicks;
+      const yy = yScale(y);
+      svg.appendChild(el("line", { x1: margin.left, x2: margin.left + innerW, y1: yy, y2: yy, class: "gridline" }));
+      svg.appendChild(el("text", { x: margin.left - 8, y: yy + 3.5, class: "axis-label", "text-anchor": "end" }, [txt(fmtCost(y))]));
+    }
+    svg.appendChild(el("line", { x1: margin.left, x2: margin.left + innerW, y1: margin.top + innerH, y2: margin.top + innerH, class: "axis-line" }));
+
+    const groups = [
+      { key: "seq", label: "SEQ / OMP", color: cssVar("--series-omp"), cx: margin.left + innerW * 0.3 },
+      { key: "acc", label: "ACC_SYNC", color: cssVar("--accent"), cx: margin.left + innerW * 0.7 },
+    ];
+    groups.forEach(g => {
+      svg.appendChild(el("text", { x: g.cx, y: H - 6, class: "axis-label", "text-anchor": "middle" }, [txt(g.label)]));
+      const vals = DATA.fase_d_costs[g.key];
+      const median = vals.slice().sort((a, b) => a - b)[Math.floor(vals.length / 2)];
+      svg.appendChild(el("line", { x1: g.cx - 34, x2: g.cx + 34, y1: yScale(median), y2: yScale(median), stroke: g.color, "stroke-width": 2.5 }));
+      // deterministic jitter
+      vals.forEach((v, i) => {
+        const jitter = ((i * 9301 + 49297) % 233280) / 233280 - 0.5;
+        const cx = g.cx + jitter * 46;
+        const c = el("circle", { cx, cy: yScale(v), r: 3.6, fill: g.color, "fill-opacity": 0.75, stroke: "none" });
+        c.style.cursor = "pointer";
+        c.addEventListener("mousemove", (ev) => {
+          tooltip.innerHTML = `${g.label}<br>custo: ${v.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
+          const cRect = mount.parentElement.getBoundingClientRect();
+          tooltip.style.left = ((ev.clientX - cRect.left) + 14) + "px";
+          tooltip.style.top = ((ev.clientY - cRect.top) - 10) + "px";
+          tooltip.style.opacity = 1;
+        });
+        c.addEventListener("mouseleave", () => tooltip.style.opacity = 0);
+        svg.appendChild(c);
+      });
+    });
+    svg.appendChild(el("text", { x: margin.left, y: 10, class: "axis-title" }, [txt("custo final (milhões)")]));
+
+    mount.innerHTML = "";
+    mount.appendChild(svg);
+    const legend = el("div", { class: "legend-row" });
+    [{ color: cssVar("--series-omp"), label: "SEQ / OMP — 30 sementes" }, { color: cssVar("--accent"), label: "ACC_SYNC — 30 sementes" }].forEach(l => {
+      const item = el("div", { class: "legend-item" });
+      item.appendChild(el("span", { class: "legend-dot", style: `background:${l.color}` }));
+      item.appendChild(txt(l.label));
+      legend.appendChild(item);
+    });
+    mount.appendChild(legend);
+  })();
+
+  /* ---------------- Fig E: speedup/eficiencia ---------------- */
+  (function () {
+    const omp = DATA.fase_e_stats.filter(r => r.version === "OMP");
+    const acc = DATA.fase_e_stats.find(r => r.version === "ACC_SYNC");
+    lineChart("chart-e-speedup", "tt-e-speedup", {
+      series: [
+        { name: "OpenMP", color: cssVar("--series-omp"), points: omp.map(r => ({ x: +r.threads, y: r.speedup })), endLabel: "OMP" },
+        { name: "OpenACC (ref.)", color: cssVar("--accent"), dash: "5 4", width: 2,
+          points: [{ x: 1, y: acc.speedup }, { x: 12, y: acc.speedup }] },
+      ],
+      logX: true, logY: false,
+      xDomain: [0.9, 13], yDomain: [0, 8],
+      xTicks: [1, 2, 4, 8, 12], yTicks: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      xFmt: (x) => x, yFmt: (y) => y + "×",
+      tooltipYFmt: (y) => y.toFixed(2) + "×",
+      xAxisTitle: "threads (log) — OpenACC não depende de threads", yAxisTitle: "speedup vs SEQ",
+      legend: [
+        { color: cssVar("--series-omp"), label: "OpenMP (1→12 threads)" },
+        { color: cssVar("--accent"), label: `OpenACC — ${acc.speedup.toFixed(2)}× (referência fixa)`, dash: true },
+      ],
+    });
+  })();
+
+  /* ---------------- Fig E: breakdown stacked bars ---------------- */
+  (function () {
+    const mount = document.getElementById("chart-e-breakdown");
+    const tooltip = document.getElementById("tt-e-breakdown");
+    const W = 800, H = 230;
+    const margin = { top: 14, right: 24, bottom: 34, left: 130 };
+    const innerW = W - margin.left - margin.right;
+    const rowH = 30, gap = 20;
+
+    const rows = DATA.fase_c_time.map(r => ({
+      label: `${r.system}un (Fase C)`,
+      kernel: r.kernel_pct, pcie: r.pcie_pct, cpu: 100 - r.kernel_pct - r.pcie_pct, note: "cpu = resto (não medido em Fase C)",
+    }));
+    const fe = DATA.fase_e_breakdown;
+    const feTotal = fe.kernel + fe.pcie + fe.cpu;
+    rows.push({
+      label: "100un (Fase E)",
+      kernel: fe.kernel / feTotal * 100, pcie: fe.pcie / feTotal * 100, cpu: fe.cpu / feTotal * 100,
+      note: "medido diretamente (10 repetições)",
+    });
+
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart-svg" });
+    const xScale = (pct) => margin.left + pct / 100 * innerW;
+    const colors = { kernel: cssVar("--accent"), pcie: cssVar("--series-omp"), cpu: cssVar("--series-seq") };
+
+    rows.forEach((r, i) => {
+      const y = margin.top + i * (rowH + gap);
+      svg.appendChild(el("text", { x: margin.left - 10, y: y + rowH / 2 + 4, class: "axis-label", "text-anchor": "end" }, [txt(r.label)]));
+      let x = margin.left;
+      [["kernel", r.kernel], ["pcie", r.pcie], ["cpu", r.cpu]].forEach(([key, pct]) => {
+        const w = pct / 100 * innerW;
+        const seg = el("rect", { x: x + 1, y, width: Math.max(0, w - 2), height: rowH, fill: colors[key], class: "bar-seg" });
+        seg.addEventListener("mousemove", (ev) => {
+          tooltip.innerHTML = `${r.label}<br>${key}: ${pct.toFixed(1)}%<br><span style="opacity:.7">${r.note}</span>`;
+          const cRect = mount.parentElement.getBoundingClientRect();
+          tooltip.style.left = ((ev.clientX - cRect.left) + 14) + "px";
+          tooltip.style.top = ((ev.clientY - cRect.top) - 10) + "px";
+          tooltip.style.opacity = 1;
+        });
+        seg.addEventListener("mouseleave", () => tooltip.style.opacity = 0);
+        svg.appendChild(seg);
+        if (pct > 8) svg.appendChild(el("text", { x: x + w / 2, y: y + rowH / 2 + 4, class: "bar-label", "text-anchor": "middle", style: "fill:#fff;mix-blend-mode:difference;" }, [txt(pct.toFixed(0) + "%")]));
+        x += w;
+      });
+    });
+    const totalH = margin.top + rows.length * (rowH + gap);
+    svg.setAttribute("viewBox", `0 0 ${W} ${totalH + 6}`);
+
+    mount.innerHTML = "";
+    mount.appendChild(svg);
+    const legend = el("div", { class: "legend-row" });
+    [["kernel GPU", colors.kernel], ["transferências PCIe", colors.pcie], ["CPU / resto", colors.cpu]].forEach(([label, color]) => {
+      const item = el("div", { class: "legend-item" });
+      item.appendChild(el("span", { class: "legend-swatch", style: `background:${color}` }));
+      item.appendChild(txt(label));
+      legend.appendChild(item);
+    });
+    mount.appendChild(legend);
+  })();
+
+  /* ---------------- Fig: convergencia ---------------- */
+  (function () {
+    const conv = DATA.convergence;
+    lineChart("chart-conv", "tt-conv", {
+      series: [
+        { name: "SEQ", color: cssVar("--series-seq"), points: conv.seq.map(p => ({ x: p.iter, y: p.cost })), width: 2 },
+        { name: "OMP@12", color: cssVar("--series-omp"), points: conv.omp12.map(p => ({ x: p.iter, y: p.cost })), width: 2, dash: "1 3" },
+        { name: "ACC_SYNC", color: cssVar("--accent"), points: conv.acc.map(p => ({ x: p.iter, y: p.cost })), width: 2.4 },
+      ],
+      logX: true, logY: false,
+      xDomain: [1, 1000],
+      yDomain: [10.55e6, 10.73e6],
+      xTicks: [1, 10, 100, 1000], yTicks: [10.55e6, 10.6e6, 10.65e6, 10.7e6],
+      xFmt: (x) => x, yFmt: (y) => (y / 1e6).toFixed(2) + "M",
+      tooltipYFmt: (y) => y.toLocaleString("pt-BR", { maximumFractionDigits: 0 }),
+      xAxisTitle: "iteração (log)", yAxisTitle: "melhor custo",
+      legend: [
+        { color: cssVar("--series-seq"), label: "SEQ" },
+        { color: cssVar("--series-omp"), label: "OpenMP @ 12 threads (sobreposto ao SEQ)" },
+        { color: cssVar("--accent"), label: "OpenACC (ACC_SYNC)" },
+      ],
+    });
+  })();
+
+})();
+</script>
