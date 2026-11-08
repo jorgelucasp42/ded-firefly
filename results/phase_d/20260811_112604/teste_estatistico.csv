@@ -1,0 +1,5 @@
+nome,n1,n2,estatistica,p_valor,metodo,hipotese_alternativa
+mannwhitney_seq_vs_accsync,30,30,900.0,1.691123389214474e-17,exact,two-sided (distribuicoes diferentes)
+mannwhitney_seq_vs_accsync,30,30,900.0,8.45561694607237e-18,exact,"greater (custo SEQ > custo ACC_SYNC, i.e. ACC_SYNC menor)"
+wilcoxon_pareado_seq_vs_accsync_sensibilidade,30,30,0.0,1.862645149230957e-09,exact,two-sided (distribuicoes diferentes)
+wilcoxon_pareado_seq_vs_accsync_sensibilidade,30,30,465.0,9.313225746154785e-10,exact,"greater (custo SEQ > custo ACC_SYNC, i.e. ACC_SYNC menor)"

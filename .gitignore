@@ -31,3 +31,6 @@ bin_validate
 # Config local do Claude Code (específico da máquina)
 .claude/
 bin_*
+
+# Ambiente virtual Python local
+.venv/

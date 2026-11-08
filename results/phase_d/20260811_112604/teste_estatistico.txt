@@ -1,0 +1,39 @@
+Teste estatistico - Fase D (SEQ/OMP vs ACC_SYNC)
+Pasta da rodada: /home/jorge/Projetos/tccv2/ded-firefly/results/phase_d/20260811_112604
+Data de execucao deste script: 2026-11-08T12:27:14
+Commit git (curto): 8a68606
+Versao do scipy: 1.18.1
+
+Verificacao SEQ vs OMP (custo identico por semente):
+  OK: custos identicos
+
+Amostras usadas (apenas valid_ok==1, sementes em comum entre SEQ e ACC_SYNC): n1=n2=30
+
+TESTE PRINCIPAL: Mann-Whitney U (amostras independentes, SEQ vs ACC_SYNC)
+  Motivo: as trajetorias de SEQ e ACC_SYNC sao diferentes (ACC_SYNC usa movimento
+  sincronizado), entao o pareamento por semente nao reflete amostras dependentes
+  no sentido classico do teste pareado. Por isso o teste independente e o principal.
+  Bilateral: U=900.0, p=1.69112e-17, method=exact
+  Unilateral (H1: custo ACC_SYNC menor que SEQ): U=900.0, p=8.45562e-18, method=exact
+
+TESTE COMPLEMENTAR (sensibilidade): Wilcoxon de postos sinalizados, pareado por semente
+  Apenas analise de sensibilidade; o teste principal e o Mann-Whitney acima.
+  Bilateral: W=0.0, p=1.86265e-09, method=exact
+  Unilateral (H1: custo ACC_SYNC menor que SEQ): W=465.0, p=9.31323e-10, method=exact
+
+MEDIDAS DE EFEITO
+  Media SEQ: 10645999.739233
+  Media ACC_SYNC: 10567085.377152
+  Diferenca de medias (ACC_SYNC - SEQ): -78914.362081 (-0.7413%)
+  Mediana SEQ: 10644466.569414
+  Mediana ACC_SYNC: 10565200.616977
+  Diferenca de medianas (ACC_SYNC - SEQ): -79265.952437 (-0.7447%)
+  Probabilidade de superioridade de ACC_SYNC (fracao de pares SEQ x ACC_SYNC em que ACC_SYNC tem custo menor): 1.000000  (pares ACC_SYNC menor=900, pares SEQ menor=0, empates=0, total=900)
+  Correlacao rank-biserial (= Delta de Cliff; positivo => ACC_SYNC tende a custo menor): 1.000000
+
+SOBREPOSICAO DAS DISTRIBUICOES
+  Melhor custo (minimo) de SEQ: 10634880.375390
+  Pior custo (maximo) de ACC_SYNC: 10581929.134769
+  As distribuicoes NAO se sobrepoem: todo ACC_SYNC < todo SEQ nesta amostra.
+  (Conferir estes dois valores com best_cost/worst_cost em stats.csv.)
+
